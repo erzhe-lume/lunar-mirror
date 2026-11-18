@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07080f" />
+    <meta
+      name="description"
+      content="心镜 · 塔罗自省：不是预言，是一面镜子。抽三张牌，和此刻的自己谈一谈。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="心镜 · 塔罗自省" />
+    <meta
+      property="og:description"
+      content="不是预言，是一面镜子。抽三张牌，和此刻的自己谈一谈。"
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="心镜 · 塔罗自省" />
+    <meta
+      name="twitter:description"
+      content="不是预言，是一面镜子。抽三张牌，和此刻的自己谈一谈。"
+    />
+    <script>
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem('tarot-mirror.settings') || '{}',
+        )
+        if (saved.theme === 'verdant' || saved.theme === 'abyss') {
+          document.documentElement.dataset.theme = saved.theme
+        }
+      } catch {
+        // Keep the default theme if saved settings are unavailable.
+      }
+    </script>
+    <title>心镜 · 塔罗自省</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>心镜需要启用 JavaScript 才能在本地完成抽牌与自省记录。</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

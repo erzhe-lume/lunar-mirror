@@ -1,0 +1,929 @@
+/* ---------- 视觉精修：雾面、星图与金线 ---------- */
+.view-shell {
+  animation: viewArrive 0.72s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes viewArrive {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(16px) scale(0.996);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+
+.nav-btn.is-active {
+  color: var(--gold-bright);
+  text-shadow: 0 0 18px rgba(244, 221, 166, 0.32);
+}
+
+/* 首页光晕与雾面问句框 */
+.hero-copy {
+  isolation: isolate;
+}
+
+.hero-copy::before {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  z-index: -1;
+  width: min(560px, 86vw);
+  height: 300px;
+  content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, rgba(217, 185, 112, 0.17), transparent 62%),
+    radial-gradient(ellipse at 64% 42%, rgba(132, 94, 174, 0.1), transparent 70%);
+  filter: blur(26px);
+  transform: translate(-50%, -50%);
+  animation: heroHalo 9s ease-in-out infinite alternate;
+}
+
+@keyframes heroHalo {
+  from {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
+.ask-panel {
+  isolation: isolate;
+}
+
+.ask-mist {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 22% 72%, rgba(217, 185, 112, 0.16), transparent 56%),
+    radial-gradient(ellipse at 78% 22%, rgba(110, 82, 154, 0.16), transparent 58%),
+    radial-gradient(ellipse at 58% 92%, rgba(168, 102, 116, 0.07), transparent 54%);
+  background-size: 160% 160%;
+  border-radius: inherit;
+  filter: blur(26px);
+  opacity: 0.9;
+  animation: askMist 22s ease-in-out infinite alternate;
+}
+
+@keyframes askMist {
+  from {
+    background-position: 0% 50%, 100% 0%, 50% 100%;
+  }
+  to {
+    background-position: 22% 58%, 78% 22%, 42% 78%;
+  }
+}
+
+.ask-submit {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 13px 36px rgba(217, 182, 103, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.46);
+}
+
+.cta-star {
+  font-size: 10px;
+  color: #3a2a10;
+  opacity: 0.55;
+  transform: translateY(-1px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.primary-btn:hover:not(:disabled) .cta-star {
+  opacity: 0.9;
+  transform: translateY(-1px) scale(1.15);
+}
+
+.home-aside-note {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.home-aside-note::before {
+  position: absolute;
+  top: -48px;
+  right: -30px;
+  z-index: -1;
+  width: 150px;
+  height: 150px;
+  content: '';
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(217, 185, 112, 0.13), transparent 68%);
+  filter: blur(8px);
+}
+
+.home-aside-quote::after {
+  position: absolute;
+  top: 16px;
+  right: 17px;
+  content: '✦';
+  font-size: 8px;
+  color: rgba(244, 221, 166, 0.38);
+  animation: markTwinkle 5s ease-in-out infinite;
+}
+
+/* 抽牌：当前卡位的仪式光 */
+.spread-slot.is-active .slot-placeholder {
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(244, 221, 166, 0.1), transparent 64%),
+    rgba(255, 255, 255, 0.012);
+  border-style: solid;
+  border-color: rgba(217, 185, 112, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(217, 185, 112, 0.1),
+    0 24px 54px rgba(0, 0, 0, 0.3),
+    inset 0 0 40px rgba(217, 185, 112, 0.05);
+  animation: activeSlot 4.6s ease-in-out infinite;
+}
+
+.spread-slot.is-active .slot-index {
+  color: #1c1407;
+  background: linear-gradient(135deg, #f4dda6, #caa35c);
+  border-color: rgba(255, 248, 226, 0.55);
+  box-shadow: 0 0 20px rgba(217, 185, 112, 0.36);
+}
+
+.spread-slot.is-active .slot-label {
+  color: var(--gold-bright);
+  text-shadow: 0 0 20px rgba(244, 221, 166, 0.34);
+}
+
+.spread-slot.is-active .placeholder-mark {
+  color: var(--gold-bright);
+  text-shadow: 0 0 16px rgba(244, 221, 166, 0.6);
+  animation: markTwinkle 3.4s ease-in-out infinite;
+}
+
+.spread-slot.is-active .slot-head {
+  position: relative;
+}
+
+.spread-slot.is-active .slot-head::after {
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  width: 28px;
+  height: 1px;
+  content: '';
+  background: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
+  box-shadow: 0 0 10px rgba(244, 221, 166, 0.35);
+  transform: translateX(-50%);
+}
+
+@keyframes activeSlot {
+  0%,
+  100% {
+    border-color: rgba(217, 185, 112, 0.32);
+    box-shadow:
+      0 0 0 1px rgba(217, 185, 112, 0.08),
+      0 24px 54px rgba(0, 0, 0, 0.3),
+      inset 0 0 36px rgba(217, 185, 112, 0.035);
+  }
+  50% {
+    border-color: rgba(244, 221, 166, 0.62);
+    box-shadow:
+      0 0 0 1px rgba(217, 185, 112, 0.16),
+      0 24px 58px rgba(0, 0, 0, 0.32),
+      0 0 42px rgba(217, 185, 112, 0.12),
+      inset 0 0 48px rgba(217, 185, 112, 0.06);
+  }
+}
+
+.start-reading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  margin: 28px auto 0;
+}
+
+.start-reading:not(:disabled) {
+  box-shadow:
+    0 14px 38px rgba(217, 182, 103, 0.28),
+    0 0 42px rgba(217, 185, 112, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.46);
+}
+
+/* 解读：三牌星轨 + 更松的扇形 */
+.spread-fan {
+  --spread-card-w: 104px;
+  --spread-spread: 76px;
+}
+
+.spread-orbit {
+  position: absolute;
+  top: 47%;
+  left: 50%;
+  z-index: 0;
+  width: 236px;
+  height: 236px;
+  pointer-events: none;
+  border: 1px dashed rgba(217, 185, 112, 0.16);
+  border-radius: 50%;
+  opacity: 0.8;
+  transform: translate(-50%, -50%);
+  animation: spreadOrbit 54s linear infinite;
+}
+
+.spread-orbit::before {
+  position: absolute;
+  top: 9%;
+  left: 50%;
+  width: 3.4px;
+  height: 3.4px;
+  content: '';
+  background: var(--gold-bright);
+  border-radius: 50%;
+  box-shadow: 0 0 12px 2px rgba(244, 221, 166, 0.4);
+  transform: translateX(-50%);
+}
+
+@keyframes spreadOrbit {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.spread-fan-card.card-0 {
+  transform: translateX(calc(-50% - var(--spread-spread))) rotate(-10deg);
+}
+
+.spread-fan-card.card-2 {
+  transform: translateX(calc(-50% + var(--spread-spread))) rotate(10deg);
+}
+
+.spread-fan-card {
+  transition: filter 0.35s ease;
+}
+
+@media (hover: hover) {
+  .spread-fan-card:hover {
+    filter: drop-shadow(0 22px 30px rgba(0, 0, 0, 0.52))
+      drop-shadow(0 0 22px rgba(217, 185, 112, 0.24));
+  }
+}
+
+/* 解读：镜字水印与第二轨道 */
+.chat-ward {
+  position: absolute;
+  top: 22%;
+  right: -34px;
+  font-family: var(--serif);
+  font-size: 272px;
+  line-height: 1;
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+  -webkit-text-stroke: 1px rgba(244, 221, 166, 0.06);
+  opacity: 0.78;
+  transform: rotate(-6deg);
+  animation: wardFloat 18s ease-in-out infinite alternate;
+}
+
+@keyframes wardFloat {
+  from {
+    transform: translateY(0) rotate(-6deg) scale(1);
+  }
+  to {
+    transform: translateY(-12px) rotate(-4.5deg) scale(1.015);
+  }
+}
+
+.chat-orbit-b {
+  top: 120px;
+  right: auto;
+  bottom: auto;
+  left: -118px;
+  width: 250px;
+  height: 250px;
+  border-style: dotted;
+  opacity: 0.5;
+  animation-direction: reverse;
+  animation-duration: 66s;
+}
+
+/* 解读：答案没有框，只有一团散开的烟和几道断续的金线 */
+.bubble-mirror {
+  isolation: isolate;
+  overflow: visible;
+  padding: 16px 20px 17px;
+  background: none;
+  border: 0;
+  border-radius: 3px 20px 20px 20px;
+  box-shadow: none;
+}
+
+.bubble-veil {
+  position: absolute;
+  inset: -15px -22px -18px -18px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 24% 30%, rgba(244, 221, 166, 0.12), transparent 58%),
+    radial-gradient(ellipse at 82% 76%, rgba(126, 92, 170, 0.12), transparent 60%),
+    radial-gradient(
+      ellipse at 42% 48%,
+      rgba(11, 11, 20, 0.82) 0%,
+      rgba(11, 11, 20, 0.62) 42%,
+      rgba(11, 11, 20, 0.26) 68%,
+      rgba(11, 11, 20, 0.06) 82%,
+      transparent 92%
+    );
+  border-radius: 16px 26px 30px 22px;
+  filter: blur(12px);
+  animation: bubbleSmoke 16s ease-in-out infinite alternate;
+}
+
+.bubble-mirror::before {
+  top: -12px;
+  right: 14px;
+  z-index: 2;
+  font-size: 56px;
+  color: rgba(244, 221, 166, 0.16);
+}
+
+.bubble-mirror::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  content: '';
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(217, 185, 112, 0.36), transparent) left top / 30px
+      1px no-repeat,
+    linear-gradient(180deg, rgba(217, 185, 112, 0.22), transparent) left top / 1px 52px
+      no-repeat,
+    linear-gradient(270deg, rgba(217, 185, 112, 0.22), transparent) right bottom / 40px
+      1px no-repeat,
+    linear-gradient(0deg, rgba(217, 185, 112, 0.16), transparent) right bottom / 1px 40px
+      no-repeat;
+}
+
+@keyframes bubbleSmoke {
+  from {
+    transform: translate3d(-2%, 1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(2%, -1%, 0) scale(1.03);
+  }
+}
+
+.chat-scroll,
+.transcript-body {
+  overflow-x: hidden;
+}
+
+.bubble-avatar {
+  position: relative;
+}
+
+.bubble-avatar::after {
+  position: absolute;
+  inset: -4px;
+  content: '';
+  pointer-events: none;
+  border: 1px dashed rgba(217, 185, 112, 0.18);
+  border-radius: 50%;
+  animation: sealOrbit 26s linear infinite;
+}
+
+/* 自省记录：金线、背光与更轻的引文 */
+.insight-card {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 86% 4%, rgba(120, 86, 166, 0.12), transparent 46%),
+    radial-gradient(ellipse at 10% 0%, rgba(244, 221, 166, 0.06), transparent 50%),
+    linear-gradient(165deg, rgba(24, 26, 44, 0.94), rgba(13, 15, 26, 0.97));
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.5),
+    0 0 90px rgba(217, 185, 112, 0.06),
+    inset 0 1px 0 rgba(255, 244, 214, 0.06);
+}
+
+.insight-mirror {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-left-width: 1px;
+  border-radius: 4px 18px 18px 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 214, 0.06),
+    0 16px 40px rgba(0, 0, 0, 0.16);
+}
+
+.insight-mirror::before {
+  position: absolute;
+  top: -18px;
+  right: 16px;
+  z-index: -1;
+  content: '“';
+  font-family: var(--serif);
+  font-size: 110px;
+  line-height: 1;
+  color: rgba(244, 221, 166, 0.12);
+  pointer-events: none;
+}
+
+.insight-mirror::after {
+  position: absolute;
+  inset: -20%;
+  z-index: -1;
+  content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(217, 185, 112, 0.13), transparent 55%),
+    radial-gradient(ellipse at 80% 80%, rgba(126, 92, 170, 0.1), transparent 58%);
+  filter: blur(18px);
+  opacity: 0.75;
+}
+
+.oracle-verse::before,
+.oracle-verse::after {
+  position: absolute;
+  font-family: var(--serif);
+  font-size: 42px;
+  line-height: 1;
+  color: rgba(244, 221, 166, 0.16);
+  pointer-events: none;
+}
+
+.oracle-verse::before {
+  top: 8px;
+  left: 12px;
+  content: '“';
+}
+
+.oracle-verse::after {
+  right: 12px;
+  bottom: -10px;
+  content: '”';
+}
+
+.insight-cards {
+  position: relative;
+  isolation: isolate;
+}
+
+.insight-cards::before {
+  position: absolute;
+  inset: -18px 6% -8px;
+  z-index: -1;
+  content: '';
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(217, 185, 112, 0.13), transparent 68%);
+  filter: blur(18px);
+}
+
+.insight-card-item .tarot-card {
+  transition: transform 0.35s ease, filter 0.35s ease;
+}
+
+@media (hover: hover) {
+  .insight-card-item:hover .tarot-card {
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.4))
+      drop-shadow(0 0 16px rgba(217, 185, 112, 0.18));
+    transform: translateY(-5px);
+  }
+}
+
+.insight-sections h4 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.insight-sections h4::before {
+  flex: none;
+  width: 4.5px;
+  height: 4.5px;
+  content: '';
+  background: var(--gold);
+  box-shadow: 0 0 9px rgba(217, 185, 112, 0.55);
+  transform: rotate(45deg);
+}
+
+.insight-sections h4::after {
+  flex: 1;
+  height: 1px;
+  content: '';
+  background: linear-gradient(90deg, rgba(217, 185, 112, 0.22), transparent);
+}
+
+/* 空档案：星图印记 */
+.journal-empty {
+  position: relative;
+  isolation: isolate;
+  min-height: 520px;
+  padding: 44px 20px 64px;
+  justify-content: center;
+}
+
+.journal-empty::before {
+  position: absolute;
+  top: 32%;
+  left: 50%;
+  z-index: -1;
+  width: min(460px, 80vw);
+  height: 320px;
+  content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, rgba(217, 185, 112, 0.1), transparent 62%),
+    radial-gradient(ellipse at 58% 42%, rgba(120, 88, 164, 0.09), transparent 68%);
+  filter: blur(26px);
+  transform: translate(-50%, -50%);
+}
+
+.celestial-empty {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(196px, 30vw, 232px);
+  aspect-ratio: 1;
+  margin-bottom: 2px;
+  color: var(--gold);
+}
+
+.empty-halo {
+  position: absolute;
+  inset: 12%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 48%, rgba(244, 221, 166, 0.16), transparent 66%);
+  filter: blur(14px);
+  animation: emptyHalo 7s ease-in-out infinite alternate;
+}
+
+.celestial-empty svg {
+  position: relative;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  animation: emptyFloat 9s ease-in-out infinite alternate;
+}
+
+.empty-orbit {
+  transform-box: view-box;
+  transform-origin: 120px 120px;
+  animation: emptyOrbitSpin 42s linear infinite;
+}
+
+.empty-glyph {
+  filter: drop-shadow(0 0 7px rgba(244, 221, 166, 0.28));
+}
+
+@keyframes emptyHalo {
+  from {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 0.95;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes emptyFloat {
+  from {
+    transform: translateY(0) rotate(-0.4deg);
+  }
+  to {
+    transform: translateY(-7px) rotate(0.4deg);
+  }
+}
+
+@keyframes emptyOrbitSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.journal-empty h3 {
+  position: relative;
+  margin-top: 4px;
+  padding-bottom: 12px;
+  font-size: 23px;
+  letter-spacing: 0.1em;
+  color: #ece5d6;
+}
+
+.journal-empty h3::after {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 96px;
+  height: 1px;
+  content: '';
+  background: linear-gradient(90deg, transparent, rgba(217, 185, 112, 0.55), transparent);
+  transform: translateX(-50%);
+}
+
+/* 视觉精修的响应式 */
+@media (max-width: 900px) {
+  .spread-fan {
+    --spread-card-w: 92px;
+    --spread-spread: 68px;
+  }
+
+  .spread-orbit {
+    width: 208px;
+    height: 208px;
+  }
+}
+
+@media (max-width: 720px) {
+  .view-shell {
+    padding-top: 16px;
+  }
+
+  .home-view {
+    gap: 16px;
+  }
+
+  .spread-fan {
+    --spread-card-w: 88px;
+    --spread-spread: 64px;
+  }
+
+  .spread-orbit {
+    width: 188px;
+    height: 188px;
+  }
+
+  .chat-ward {
+    top: 17%;
+    right: -20px;
+    font-size: 188px;
+    -webkit-text-stroke-width: 0.8px;
+  }
+
+  .chat-orbit-b {
+    top: 144px;
+    bottom: auto;
+    left: -122px;
+  }
+
+  .journal-empty {
+    min-height: 430px;
+    padding: 28px 16px 48px;
+  }
+
+  .celestial-empty {
+    width: clamp(174px, 48vw, 206px);
+  }
+}
+
+@media (max-width: 480px) {
+  .view-shell {
+    padding-top: 12px;
+  }
+
+  .home-view {
+    gap: 12px;
+  }
+
+  .ask-panel {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .ask-input {
+    height: 92px;
+    min-height: 92px;
+  }
+
+  .ask-submit {
+    margin-top: 14px;
+  }
+
+  .bubble-veil {
+    inset: -12px -10px -14px -12px;
+  }
+
+  .spread-fan {
+    --spread-card-w: 84px;
+    --spread-spread: 58px;
+  }
+
+  .spread-orbit {
+    width: 168px;
+    height: 168px;
+  }
+
+  .chat-ward {
+    top: 14%;
+    font-size: 150px;
+    opacity: 0.7;
+  }
+
+  .chat-orbit-b {
+    display: none;
+  }
+
+  .journal-empty {
+    min-height: 380px;
+    padding: 18px 12px 36px;
+  }
+
+  .journal-empty h3 {
+    font-size: 20px;
+  }
+
+  .celestial-empty {
+    width: 166px;
+  }
+
+  .ask-submit {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero-fan {
+    height: 140px;
+  }
+
+  .hero-title {
+    font-size: 52px;
+  }
+
+  .ask-head {
+    margin-bottom: 12px;
+  }
+
+  .ask-label {
+    margin-bottom: 9px;
+  }
+
+  .ask-input {
+    height: 84px;
+    min-height: 84px;
+  }
+
+  .ask-tools {
+    margin-top: 9px;
+  }
+
+  .ask-submit {
+    margin-top: 12px;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 980px) {
+  .view-shell {
+    padding-top: 12px;
+  }
+
+  .home-view {
+    gap: 14px;
+  }
+
+  .hero-title {
+    font-size: clamp(64px, 8vw, 86px);
+  }
+
+  .ask-panel {
+    padding-top: 20px;
+  }
+
+  .ask-input {
+    height: 78px;
+    min-height: 78px;
+  }
+
+  .ask-submit {
+    margin-top: 14px;
+  }
+}
+
+.reply-suggestions {
+  position: relative;
+}
+
+.reply-suggestions::before {
+  position: absolute;
+  top: -24px;
+  right: 0;
+  left: 0;
+  height: 24px;
+  content: '';
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(6, 7, 13, 0.82));
+}
+
+/* 抽牌扇面：悬停时只抬起卡面，不移动按钮的命中区域，避免边缘抽搐 */
+@media (hover: hover) {
+  .fan-card:hover:not(:disabled) {
+    transform: rotate(var(--rot)) translateY(var(--lift));
+  }
+
+  .fan-card:hover:not(:disabled) .fan-card-tilt {
+    transform:
+      translateY(-18px)
+      scale(1.05)
+      rotate(calc(var(--rot) * -1))
+      perspective(760px)
+      rotateX(calc(var(--tilt-x, 0) * 9deg))
+      rotateY(calc(var(--tilt-y, 0) * 12deg))
+      translateZ(10px);
+  }
+}
+
+/* 设置：模型记忆与网关模型切换 */
+.field-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-head .field-label {
+  margin: 0;
+}
+
+.model-fetch-btn {
+  flex: none;
+  padding: 4px 9px;
+  font-size: 10.5px;
+}
+
+.model-gateway-select {
+  width: 100%;
+  padding: 9px 11px;
+  font-size: 12px;
+  color: var(--muted);
+  background: rgba(5, 6, 12, 0.55);
+  border: 1px solid rgba(217, 182, 103, 0.16);
+  border-radius: 9px;
+  outline: none;
+  transition: border-color 0.25s;
+}
+
+.model-gateway-select:focus {
+  border-color: rgba(217, 182, 103, 0.5);
+}
+
+.model-gateway-select option {
+  color: var(--ink);
+  background: #12111c;
+}
+
+.model-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.model-history-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+}
+
+.model-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.model-chip {
+  padding: 4px 9px;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  background: rgba(8, 7, 13, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  transition: color 0.25s, border-color 0.25s, background 0.25s;
+}
+
+.model-chip:hover {
+  color: var(--gold-bright);
+  border-color: var(--gold-dim);
+}
+
+.model-chip.is-active {
+  color: var(--gold-bright);
+  background: rgba(217, 185, 112, 0.1);
+  border-color: rgba(217, 185, 112, 0.44);
+}
+
+.model-error {
+  color: #f0a6a6;
+}
