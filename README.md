@@ -115,12 +115,12 @@ scripts/        本心模式覆盖率测试与 5 万条本地压测
 
 ## 技术栈
 
-- **React 19** + **TypeScript 5.8**，无状态管理库，状态走 Context 与自定义 hook。
+- **React 19** + **TypeScript 5.8**，无状态管理库：状态集中在 `App.tsx` 根组件，按需向下传递；无路由库，用 hash history 手写视图切换。
 - **Vite 6** 构建与开发服务器，`vite.config.ts` 内建五路同源代理。
 - **原生 CSS** 分层组织（`index.css` / `theme.css` / `visual-polish.css` / `model-manager.css`），无 UI 框架。
-- **Canvas + Web Audio**：签文图导出、BGM 与音效合成、摄像头快照。
-- **IndexedDB + localStorage** 持久化，Hash 路由。
-- **oxlint** 做静态检查。
+- **Canvas + Web Audio**：签文图导出与摄像头快照走 Canvas，BGM 与音效由 Web Audio 实时合成。
+- **IndexedDB + localStorage** 持久化：记录进 IndexedDB，设置与草稿进 localStorage。
+- **oxlint**：仓库提供 `.oxlintrc.json` 规则集，供编辑器与 CLI 复用。
 
 ## 测试
 
