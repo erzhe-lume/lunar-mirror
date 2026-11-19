@@ -17,6 +17,13 @@ import {
   THEME_CORPUS,
 } from '../data/reflection-corpus'
 import { detectSafetyConcern, type SafetyKind } from './crisis'
+import {
+  safetyInsight,
+  safetyOpening,
+  safetyReply,
+  safetySuggestions,
+  safetyRevisit,
+} from '../data/safety-copy'
 
 type FrameKey = 'decision' | 'prediction' | 'advice' | 'understanding' | 'general'
 
@@ -769,7 +776,7 @@ const COUNTER_VOICES = [
 const AUTHORITY_LINES = [
   '这些只是镜子，不是命令；最后的分辨仍然在你手里。',
   '你可以同意其中一句，也可以全部推翻。牌不比你更了解你的生活。',
-  '没有哪一张牌拥有最终解释权，包括心镜。',
+  '没有哪一张牌拥有最终解释权，包括月鉴。',
   '不必急着把三句话统一成一个答案；有些问题允许同时有几种真实。',
   '如果有一句让你不舒服，也可以把它放回去。你不需要接受整组解释。',
   '可以只带走一句，也可以一句都不带走。',
@@ -987,31 +994,9 @@ const seedBase = (question: string, cards: DrawnCard[]) =>
     ]),
   )
 
-const CRISIS_OPENING = `我听见你现在的痛。先不谈牌，也不做解读；此刻先把安全放在第一位。
+const TASK_OPENING = `这件事我帮不上忙——月鉴不做检索、翻译或代写，只陪你做自省。如果愿意，我们可以换个角度：这件事此刻最让你在意的是什么？`
 
-如果此刻有伤害自己的危险，请立刻拨打 110（报警）或 120（急救），并联系一个能马上到你身边的人。中国大陆也可以拨打全国心理援助热线 12356，或前往最近医院的急诊、精神心理科。
-
-不要独处；如果可以，先把可能伤害自己的物品移远，去有人的地方。
-
-你不需要一个人扛。现在有谁可以陪着你？`
-
-const CRISIS_REPLY = `谢谢你愿意继续说出来。此刻最重要的不是解读，而是你的安全。请马上联系一个能陪你的人，拨打 110 / 120；中国大陆可拨打 12356，或前往最近医院的急诊、精神心理科。现在有谁可以陪着你？`
-
-const HARM_OPENING = `先不谈牌，也不做解读。你提到了伤害或暴力的情况，这一刻最重要的是任何人不受伤。
-
-如果你有伤害别人的冲动：请立刻远离对方、武器和任何可能伤人的物品，离开冲突现场，去一个安全且有人的地方。拨打 110 报警；如果有人受伤，立刻拨打 120。
-
-如果你正被威胁或追赶：请优先保护自己，去有人的地方并拨打 110，不要独自面对。
-
-联系一个能马上陪着你的人。中国大陆也可以拨打全国心理援助热线 12356，或前往最近医院的急诊、精神心理科。
-
-在情绪最强烈的时候，不做决定，也不靠近对方。现在有谁可以陪着你？`
-
-const HARM_REPLY = `谢谢你愿意继续说出来。此刻最重要的不是解读，而是你和他人的安全。请马上离开冲突现场，远离武器，拨打 110；有人受伤立即拨打 120。如果你正被威胁，请先去安全的地方。也可以联系一个能陪你的人，或拨打 12356。现在你在哪里，身边有谁？`
-
-const TASK_OPENING = `这件事我帮不上忙——心镜不做检索、翻译或代写，只陪你做自省。如果愿意，我们可以换个角度：这件事此刻最让你在意的是什么？`
-
-const TASK_REPLY = `心镜只做自省陪伴，不做检索或代写。要不要告诉我：你问这件事时，心里真正担心的是什么？`
+const TASK_REPLY = `月鉴只做自省陪伴，不做检索或代写。要不要告诉我：你问这件事时，心里真正担心的是什么？`
 
 const TASK_PATTERNS = [
   /帮我(写|翻译|算|查|找|推荐|做|订)/,
@@ -1036,10 +1021,15 @@ function conversationConcern(
       .filter((message) => message.role === 'user')
       .map((message) => detectSafetyConcern(message.content)),
   ].filter((kind): kind is SafetyKind => kind !== null)
-  if (kinds.includes('both')) return 'both'
-  if (kinds.includes('other')) return 'other'
-  if (kinds.includes('self')) return 'self'
-  return null
+  const priority: SafetyKind[] = [
+    'both',
+    'sexual-assault',
+    'sexual-harm',
+    'threat',
+    'harm-others',
+    'self',
+  ]
+  return priority.find((kind) => kinds.includes(kind)) ?? null
 }
 
 function detectTheme(question: string): Theme {
@@ -1169,16 +1159,7 @@ export function demoOpening(
   querent?: string,
 ): string {
   const concern = detectSafetyConcern(question)
-  if (concern === 'other' || concern === 'both') {
-    return querent
-      ? `如果这是替「${querent}」问的，请先确认对方和周围人的安全。\n\n${HARM_OPENING}`
-      : HARM_OPENING
-  }
-  if (concern === 'self') {
-    return querent
-      ? `如果这是替「${querent}」问的，请先确认对方此刻是否安全。\n\n${CRISIS_OPENING}`
-      : CRISIS_OPENING
-  }
+  if (concern) return safetyOpening(concern, querent)
   if (isTaskRequest(question)) return TASK_OPENING
 
   const { theme, tone, frame } = analyzeQuestion(question)
@@ -1252,8 +1233,7 @@ export function demoReply(
   const userMessages = messages.filter((message) => message.role === 'user')
   const lastUser = userMessages[userMessages.length - 1]?.content ?? ''
   const concern = conversationConcern(question, messages)
-  if (concern === 'other' || concern === 'both') return HARM_REPLY
-  if (concern === 'self') return CRISIS_REPLY
+  if (concern) return safetyReply(concern)
   if (isTaskRequest(question)) return TASK_REPLY
 
   const { theme, tone, frame } = analyzeQuestion(question)
@@ -1406,38 +1386,13 @@ export function demoInsight(
   const lastUser = userMessages[userMessages.length - 1]?.content
 
   const concern = conversationConcern(question, messages)
-  if (concern === 'other' || concern === 'both') {
-    return {
-      title: '先确保没有人受伤',
-      mirror:
-        '你提到了伤害或暴力的情况，牌面不能替代现实中的保护。请先离开现场、远离武器，拨打 110；如果有人受伤，立刻拨打 120，并联系一个能陪着你的人。',
-      pattern:
-        '在情绪最强烈的时候，人容易把冲动当成唯一的选择；先让身体离开现场，等冲动过去再处理关系。',
-      invitation:
-        '今天先联系一个真实的人，写下 110、120、12356，并让自己待在有人的地方。',
-      keywords: ['安全', '边界', '求助', '此刻'],
-      crisis: true,
-    }
-  }
-
-  if (concern === 'self') {
-    return {
-      title: '先照顾好此刻的自己',
-      mirror:
-        '你现在的痛是真实的，牌面不能替代现实中的支持。请优先拨打 110 / 120，联系可信任的人，或前往最近医院的急诊、精神心理科；中国大陆可尝试心理援助热线 12356。',
-      pattern: '在很难的时候，人容易一个人扛着，这不是你的错。先让自己更安全，比想明白更重要。',
-      invitation:
-        '今天先联系一个真实的人，并写下 110、120、12356 和一个可以联系的人；如果有立即危险，请马上去有人的地方。',
-      keywords: ['安全', '支持', '此刻'],
-      crisis: true,
-    }
-  }
+  if (concern) return safetyInsight(concern)
 
   if (isTaskRequest(question)) {
     return {
       title: '把问题带回自己',
       mirror:
-        '你带来的更像一个待办任务，而心镜只做自省陪伴。也许可以问问：这件事为什么此刻落在你手里？',
+        '你带来的更像一个待办任务，而月鉴只做自省陪伴。也许可以问问：这件事为什么此刻落在你手里？',
       pattern: '当事情以任务的形式出现时，背后的期待、压力或关系容易被忽略。',
       invitation: '如果愿意，换一个与你有关的问法，再抽一次牌。',
       keywords: ['换一个问题', '自省', '此刻'],
@@ -1541,20 +1496,7 @@ export function demoInsight(
 
 export function demoSuggestions(question: string): string[] {
   const concern = detectSafetyConcern(question)
-  if (concern === 'other' || concern === 'both') {
-    return [
-      '我现在处于伤害或暴力的危险里，需要马上求助。',
-      '我愿意先离开现场，联系一个能陪我的人。',
-      '我想马上联系警察或心理援助。',
-    ]
-  }
-  if (concern === 'self') {
-    return [
-      '我现在有立即危险，需要马上报警或急救。',
-      '我愿意先联系一个可以陪我的人。',
-      '我想找心理医生或心理援助热线。',
-    ]
-  }
+  if (concern) return safetySuggestions(concern)
   if (isTaskRequest(question)) {
     return ['其实我想问的不是这个任务。', '让我换一个和我有关的问法。', '我想先说说为什么这件事让我在意。']
   }
@@ -1608,18 +1550,7 @@ export function demoSuggestions(question: string): string[] {
 
 export function demoRevisit(entry: JournalEntry, answer: string): string {
   const concern = conversationConcern(entry.question, entry.messages)
-  if (concern === 'other' || concern === 'both') {
-    return `谢谢你回来写下这些。你和他人的安全仍然最重要，请优先离开冲突现场、远离武器，拨打 110；有人受伤拨打 120，并联系一个能陪着你的人；中国大陆也可尝试 12356。${firstClause(
-      answer,
-      26,
-    )}——先把这段冲动交给现实中的支持，不需要一个人扛。`
-  }
-  if (concern === 'self') {
-    return `谢谢你回来写下这些。你此刻的安全仍然最重要，请优先联系身边可信任的人，拨打 110 / 120，或前往最近医院的急诊、精神心理科；中国大陆也可尝试 12356。${firstClause(
-      answer,
-      26,
-    )}——这些感受值得被认真对待，你不需要一个人扛。`
-  }
+  if (concern) return safetyRevisit(concern, firstClause(answer, 26))
 
   const theme = detectTheme(entry.question)
   const keyword = entry.insight.keywords[0] ?? '那件事'

@@ -20,6 +20,11 @@ interface Props {
 const pause = (ms: number) =>
   new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
+function entryIdFromHash(): string | null {
+  const match = window.location.hash.match(/^#\/journal\/([^/?#]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 export default function JournalView({
   entries,
   settings,
@@ -27,7 +32,9 @@ export default function JournalView({
   onUpdate,
   onDelete,
 }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => entryIdFromHash(),
+  )
   const [ringPage, setRingPage] = useState(0)
   const [previewId, setPreviewId] = useState<string | null>(
     entries[0]?.id ?? null,
@@ -43,6 +50,16 @@ export default function JournalView({
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }, [selectedId])
+
+  useEffect(() => {
+    const sync = () => setSelectedId(entryIdFromHash())
+    window.addEventListener('popstate', sync)
+    return () => window.removeEventListener('popstate', sync)
+  }, [])
+
+  useEffect(() => {
+    document.title = selected ? '照见 · 月鉴' : '时间线 · 月鉴'
+  }, [selected])
 
   useEffect(() => {
     const lastPage = Math.max(
@@ -65,6 +82,16 @@ export default function JournalView({
     setRevisitText('')
     setRevisitError('')
     setRevisitNotice('')
+    window.history.pushState(
+      { view: 'journal', entryId: entry.id },
+      '',
+      `#/journal/${encodeURIComponent(entry.id)}`,
+    )
+  }
+
+  const closeEntry = () => {
+    setSelectedId(null)
+    window.history.replaceState({ view: 'journal' }, '', '#/journal')
   }
 
   const changeRingPage = (next: number) => {
@@ -120,13 +147,13 @@ export default function JournalView({
     const remove = async () => {
       if (!window.confirm('删除这条自省记录？此操作不可撤销。')) return
       await onDelete(selected.id)
-      setSelectedId(null)
+      closeEntry()
     }
 
     return (
       <section className="view journal-view">
         <header className="stage-head">
-          <button type="button" className="text-btn" onClick={() => setSelectedId(null)}>
+          <button type="button" className="text-btn" onClick={closeEntry}>
             ← 时间线
           </button>
           <div className="stage-question">
@@ -224,7 +251,7 @@ export default function JournalView({
               onClick={() => void submitRevisit()}
               disabled={!revisitText.trim() || revisitBusy}
             >
-              {revisitBusy ? '心镜正在读…' : '留下这次回访'}
+              {revisitBusy ? '月鉴正在读…' : '留下这次回访'}
             </button>
             {revisitNotice && <p className="form-notice">{revisitNotice}</p>}
           </section>

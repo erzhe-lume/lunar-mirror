@@ -17,7 +17,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('心镜运行异常', error, info)
+    console.error('月鉴运行异常', error, info)
   }
 
   render() {
@@ -25,7 +25,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
     return (
       <main className="app-fatal" role="alert">
-        <span className="eyebrow">MIRROR ARCANA</span>
+        <span className="eyebrow">LUNAR MIRROR</span>
         <h1>镜面暂时起了雾</h1>
         <p>刚才的操作没有完成。你的本地记录仍在浏览器里，可以重新打开继续。</p>
         <button
@@ -33,7 +33,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           className="primary-btn"
           onClick={() => window.location.reload()}
         >
-          重新打开心镜
+          重新打开月鉴
         </button>
       </main>
     )

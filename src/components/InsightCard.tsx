@@ -6,6 +6,18 @@ import { downloadInsightImage } from '../lib/share'
 import { composeVerse } from '../lib/verse'
 import TarotCard from './TarotCard'
 
+function renderVerseLine(line: string) {
+  return line.split(/([「《][^」》]+[」》])/g).map((part, index) =>
+    /^[「《]/.test(part) ? (
+      <span className="verse-term" key={index}>
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  )
+}
+
 interface Props {
   insight: Insight
   question: string
@@ -104,7 +116,7 @@ export default function InsightCard({
       <div className="oracle-verse">
         <span className="oracle-verse-label">牌面签文</span>
         {verse.map((line, index) => (
-          <p key={index}>{line}</p>
+          <p key={index}>{renderVerseLine(line)}</p>
         ))}
       </div>
 

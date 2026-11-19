@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { MAJOR_ARCANA } from '../data/tarot'
+import { isLitePerf } from '../lib/perf'
 import { useFocusTrap } from '../lib/useFocusTrap'
 import TarotCard from './TarotCard'
 
@@ -193,7 +194,7 @@ function PortalDial() {
 
       <text className="dial-arc-text">
         <textPath href="#intro-arc-text" startOffset="50%" textAnchor="middle">
-          MIRROR ARCANA · A QUIET PLACE
+          LUNAR MIRROR · A QUIET PLACE
         </textPath>
       </text>
 
@@ -228,8 +229,11 @@ export default function Intro({ onDone }: Props) {
   const timersRef = useRef<number[]>([])
   const trapRef = useFocusTrap<HTMLDivElement>(true)
 
-  const cardCount =
-    typeof window !== 'undefined' && window.innerWidth < 1024 ? 9 : 15
+  const cardCount = isLitePerf()
+    ? 7
+    : typeof window !== 'undefined' && window.innerWidth < 1024
+      ? 9
+      : 15
   const centerOffset = (cardCount - 1) / 2
   const offsets = Array.from(
     { length: cardCount },
@@ -277,7 +281,7 @@ export default function Intro({ onDone }: Props) {
       tabIndex={-1}
       role="dialog"
       aria-modal="true"
-      aria-label="心镜开场"
+      aria-label="月鉴开场"
       onClick={finish}
     >
       <div className="intro-atmosphere" aria-hidden="true">
@@ -383,10 +387,10 @@ export default function Intro({ onDone }: Props) {
         </div>
 
         <div className="intro-copy">
-          <span className="intro-eyebrow">MIRROR ARCANA · 自省之镜</span>
-          <h1 className="intro-title" aria-label="心镜">
-            <span style={{ '--i': 0 } as CSSProperties}>心</span>
-            <span style={{ '--i': 1 } as CSSProperties}>镜</span>
+          <span className="intro-eyebrow">LUNAR MIRROR · 自省之镜</span>
+          <h1 className="intro-title" aria-label="月鉴">
+            <span style={{ '--i': 0 } as CSSProperties}>月</span>
+            <span style={{ '--i': 1 } as CSSProperties}>鉴</span>
           </h1>
           <span className="intro-rule">
             <i />

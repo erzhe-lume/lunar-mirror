@@ -193,7 +193,7 @@ export async function downloadInsightImage(
 
   ctx.font = '500 22px Cinzel, "Cormorant Garamond", serif'
   ctx.fillStyle = 'rgba(232, 201, 135, 0.85)'
-  ctx.fillText('MIRROR ARCANA', WIDTH / 2, headerY)
+  ctx.fillText('LUNAR MIRROR', WIDTH / 2, headerY)
 
   ctx.font = '400 23px "Songti SC", SimSun, serif'
   ctx.fillStyle = 'rgba(163, 157, 177, 0.9)'
@@ -352,7 +352,7 @@ export async function downloadInsightImage(
   ctx.font = '500 14px Cinzel, "Cormorant Garamond", serif'
   ctx.fillStyle = 'rgba(163, 157, 177, 0.55)'
   ctx.fillText(
-    'MIRROR ARCANA · 心镜',
+    'LUNAR MIRROR · 月鉴',
     WIDTH / 2,
     HEIGHT - (isStory ? 100 : 78),
   )
@@ -365,7 +365,7 @@ export async function downloadInsightImage(
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `mirror-arcana-${format}-${Date.now()}.png`
+  link.download = `lunar-mirror-${format}-${Date.now()}.png`
   document.body.appendChild(link)
   link.click()
   link.remove()

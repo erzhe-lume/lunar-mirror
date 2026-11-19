@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { JournalEntry, Settings } from '../types'
 import { MAJOR_ARCANA } from '../data/tarot'
 import { formatShortDate } from '../lib/format'
@@ -109,8 +110,8 @@ export default function HomeView({
         </div>
 
         <div className="hero-copy">
-          <span className="hero-eyebrow">Mirror Arcana · 塔罗自省</span>
-          <h1 className="hero-title">心镜</h1>
+          <span className="hero-eyebrow">Lunar Mirror · 塔罗自省</span>
+          <h1 className="hero-title">月鉴</h1>
           <span className="hero-divider" aria-hidden="true">
             <i />
           </span>
@@ -180,6 +181,7 @@ export default function HomeView({
           placeholder="比如：我该不该换一份工作？为什么我总在关系里退让？"
           onChange={(event) => setQuestion(event.target.value)}
           onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) return
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) start()
           }}
         />
@@ -257,7 +259,7 @@ export default function HomeView({
             </button>
           )}
           <div className="home-aside-note home-aside-quote">
-            <span className="eyebrow">心镜的规矩</span>
+            <span className="eyebrow">月鉴的规矩</span>
             <p>
               不预言命运，不替你决定。牌面只是把问题摆得久一点，让你看清自己站在哪里。
             </p>
@@ -270,11 +272,14 @@ export default function HomeView({
 
       <p className="privacy-note">对话与快照只保存在你的浏览器本机，不上传服务器。</p>
 
-      <CameraModal
-        open={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onCapture={(dataUrl) => setSnapshot(dataUrl)}
-      />
+      {createPortal(
+        <CameraModal
+          open={cameraOpen}
+          onClose={() => setCameraOpen(false)}
+          onCapture={(dataUrl) => setSnapshot(dataUrl)}
+        />,
+        document.body,
+      )}
     </section>
   )
 }

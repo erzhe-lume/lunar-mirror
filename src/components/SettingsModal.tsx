@@ -184,6 +184,15 @@ export default function SettingsModal({
 
   useEffect(() => {
     if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
     if (panelRef.current) panelRef.current.scrollTop = 0
   }, [activeTab, open])
 
@@ -963,7 +972,7 @@ export default function SettingsModal({
               </button>
             </div>
             <span className="field-hint">
-              Key 只保存在本机浏览器，不会上传到心镜的服务器。公开部署时不要把 Key 放进前端，应由服务端代理鉴权；留空或开启本心模式时不会调用外部模型。
+              Key 只保存在本机浏览器，不会上传到月鉴的服务器。公开部署时不要把 Key 放进前端，应由服务端代理鉴权；留空或开启本心模式时不会调用外部模型。
             </span>
           </label>
 
@@ -1108,9 +1117,9 @@ export default function SettingsModal({
             >
         <label className="switch-row">
           <span>
-            <span className="field-label">朗读心镜的回应</span>
+            <span className="field-label">朗读月鉴的回应</span>
             <span className="field-hint">
-              使用浏览器语音合成，可随时在对话中关闭；不消耗心镜的模型接口额度。
+              使用浏览器语音合成，可随时在对话中关闭；不消耗月鉴的模型接口额度。
             </span>
           </span>
           <button
@@ -1125,12 +1134,12 @@ export default function SettingsModal({
         </label>
 
         <label className="field">
-          <span className="field-label">心镜的声音</span>
+          <span className="field-label">月鉴的声音</span>
           <div className="voice-row">
             <select
               value={voiceURI}
               onChange={(event) => setVoiceURI(event.target.value)}
-              aria-label="选择心镜的朗读音色"
+              aria-label="选择月鉴的朗读音色"
             >
               <option value="">
                 自动推荐
@@ -1151,7 +1160,7 @@ export default function SettingsModal({
               type="button"
               className="ghost-btn small"
               onClick={() =>
-                speak('我是心镜。先不急着找答案，我们慢慢看。', voiceURI)
+                speak('我是月鉴。先不急着找答案，我们慢慢看。', voiceURI)
               }
             >
               试听

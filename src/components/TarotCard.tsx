@@ -60,7 +60,7 @@ export default function TarotCard({
                 <i />
               </span>
               <span className="card-keywords">{keywords.slice(0, 3).join(' · ')}</span>
-              <span className="card-brand">MIRROR ARCANA</span>
+              <span className="card-brand">LUNAR MIRROR</span>
               <span className={`card-badge ${orientation}`}>
                 {orientation === 'upright' ? '↑ 正位' : '↓ 逆位'}
               </span>

@@ -23,22 +23,36 @@
 }
 
 :root {
-  --bg: #08050d;
+  /* Site workbench tokens; defaults match the original look. */
+  --site-bg: #08050d;
+  --site-fg: #f0e8dc;
+  --site-accent: #d9b970;
+  --site-on-accent: #181005;
+  --site-surface: rgba(217, 182, 103, 0.03);
+  --site-muted: #aaa0ac;
+  --site-border: rgba(217, 185, 112, 0.2);
+  --site-font: 'Cinzel', 'Cormorant Garamond', 'Songti SC', 'STSong', SimSun,
+    Georgia, serif;
+  --site-radius: 0px;
+  --site-space: 1;
+  --site-type: 1;
+  --site-motion: 1;
+
+  --bg: var(--site-bg);
   --bg-deep: #040207;
-  --ink: #f0e8dc;
-  --muted: #aaa0ac;
+  --ink: var(--site-fg);
+  --muted: var(--site-muted);
   --faint: #776d7a;
-  --gold: #d9b970;
+  --gold: var(--site-accent);
   --gold-bright: #f4dda6;
   --gold-dim: rgba(217, 185, 112, 0.4);
-  --line: rgba(217, 185, 112, 0.2);
-  --panel: rgba(16, 11, 24, 0.74);
+  --line: var(--site-border);
+  --panel: var(--site-surface);
   --violet: #b9a7d6;
   --rose: #d8a6ad;
   --moon: #a9bada;
   --danger: #d98b8b;
-  --display: 'Cinzel', 'Cormorant Garamond', 'Songti SC', 'STSong', SimSun,
-    Georgia, serif;
+  --display: var(--site-font);
   --serif: 'Cormorant Garamond', 'Songti SC', 'STSong', SimSun, 'Noto Serif SC',
     Georgia, serif;
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC',

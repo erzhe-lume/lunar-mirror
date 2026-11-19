@@ -83,7 +83,7 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
     const lines: string[] = []
     const single = entries.length === 1
     lines.push(
-      `从${formatShortDate(stats.oldest)}到今天，你在心镜前留下了 ${entries.length} 次照见。`,
+      `从${formatShortDate(stats.oldest)}到今天，你在月鉴前留下了 ${entries.length} 次照见。`,
     )
     if (stats.forOthers > 0) {
       lines.push(`其中 ${stats.forOthers} 次，你没有只问自己。`)
@@ -141,7 +141,7 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `mirror-arcana-${new Date().toISOString().slice(0, 10)}.json`
+    link.download = `lunar-mirror-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     setExported(true)

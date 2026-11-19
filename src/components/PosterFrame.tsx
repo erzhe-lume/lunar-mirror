@@ -5,7 +5,7 @@ export default function PosterFrame() {
       <span className="poster-corner poster-corner-tr" />
       <span className="poster-corner poster-corner-bl" />
       <span className="poster-corner poster-corner-br" />
-      <span className="poster-side poster-side-left">MIRROR ARCANA · 心镜</span>
+      <span className="poster-side poster-side-left">LUNAR MIRROR · 月鉴</span>
       <span className="poster-side poster-side-right">
         TAROT · A MIRROR FOR THE PRESENT · MMXXVI
       </span>

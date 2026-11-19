@@ -77,10 +77,11 @@ const HARM_PHRASES = [
   '我准备去学校开枪。',
   '我想拿刀捅他。',
   '我要让他死。',
-  '我想强奸她。',
   '我想杀了他，然后自杀。',
   '我想打他一顿。',
 ]
+const SEXUAL_HARM_PHRASES = ['我想强奸她。', '我要猥亵她。']
+const SEXUAL_ASSAULT_PHRASES = ['我被强奸了。', '我被性侵了。']
 const NON_HARM_PHRASES = [
   '我想杀价。',
   '我要杀毒。',
@@ -107,6 +108,7 @@ try {
       'src/lib/demo.ts',
       'src/lib/draw.ts',
       'src/lib/crisis.ts',
+      'src/data/safety-copy.ts',
       'src/data/tarot.ts',
     ],
     bundle: true,
@@ -118,6 +120,7 @@ try {
 
   const demo = await import(pathToFileURL(join(outdir, 'lib', 'demo.mjs')).href)
   const crisis = await import(pathToFileURL(join(outdir, 'lib', 'crisis.mjs')).href)
+  const safety = await import(pathToFileURL(join(outdir, 'data', 'safety-copy.mjs')).href)
   const draw = await import(pathToFileURL(join(outdir, 'lib', 'draw.mjs')).href)
   const tarot = await import(pathToFileURL(join(outdir, 'data', 'tarot.mjs')).href)
   const cards = (index) => {
@@ -175,7 +178,7 @@ try {
     const opening = demo.demoOpening(question, cards(0))
     const reply = demo.demoReply(question, cards(0), [])
     const insight = demo.demoInsight(question, cards(0), [])
-    if (!opening.includes('心镜')) failures.push(`${question}：没有跑偏引导`)
+    if (!opening.includes('月鉴')) failures.push(`${question}：没有跑偏引导`)
     if (!reply.includes('？')) failures.push(`${question}：跑偏回应没有提问`)
     if (!insight.title) failures.push(`${question}：跑偏记录没有标题`)
   })
@@ -190,8 +193,9 @@ try {
   if (crisisInsight.crisis !== true) failures.push('危机记录：缺少 crisis 标记')
 
   CRISIS_PHRASES.forEach((text) => {
-    if (!crisis.isCrisisText(text)) {
-      failures.push(`危机语句未识别：${text}`)
+    const kind = crisis.detectSafetyConcern(text)
+    if (kind !== 'self') {
+      failures.push(`自伤语句未识别：${text} -> ${kind}`)
       return
     }
     const opening = demo.demoOpening(text, cards(0))
@@ -203,47 +207,51 @@ try {
     if (crisis.isCrisisText(text)) failures.push(`普通语句被误判为危机：${text}`)
   })
 
-  HARM_PHRASES.forEach((text) => {
-    const kind = crisis.detectSafetyConcern(text)
-    if (kind !== 'other' && kind !== 'both') {
-      failures.push(`他伤语句未识别：${text} -> ${kind}`)
-      return
+  const checkSafetyCategory = (phrases, allowedKinds, label) => {
+    phrases.forEach((text) => {
+      const kind = crisis.detectSafetyConcern(text)
+      if (!allowedKinds.includes(kind)) {
+        failures.push(`${label}未识别：${text} -> ${kind}`)
+        return
+      }
+      const opening = demo.demoOpening(text, cards(0))
+      if (!opening.includes('110') || !opening.includes('120')) {
+        failures.push(`${label}引导缺少电话：${text}`)
+      }
+      const history = [
+        { role: 'assistant', content: '我在听。', at: 1 },
+        { role: 'user', content: text, at: 2 },
+      ]
+      const reply = demo.demoReply(text, cards(0), history)
+      if (!reply.includes('110') && !reply.includes('120')) {
+        failures.push(`${label}回应缺少安全引导：${text}`)
+      }
+      const insight = demo.demoInsight(text, cards(0), history)
+      if (!insight.crisis) {
+        failures.push(`${label}记录未进入安全状态：${text}`)
+      }
+      if (demo.demoSuggestions(text).length !== 3) {
+        failures.push(`${label}建议数量不是 3：${text}`)
+      }
+    })
+  }
+
+  checkSafetyCategory(HARM_PHRASES, ['harm-others', 'both'], '他伤语句')
+  checkSafetyCategory(SEXUAL_HARM_PHRASES, ['sexual-harm'], '性暴力意图')
+  checkSafetyCategory(SEXUAL_ASSAULT_PHRASES, ['sexual-assault'], '性侵受害语句')
+  checkSafetyCategory(DANGER_PHRASES, ['threat'], '受威胁语句')
+
+  Object.entries(safety.SAFETY_COPY).forEach(([kind, content]) => {
+    if (content.comforts.length < 2) {
+      failures.push(`安全分类 ${kind} 的安慰文案少于 2 条`)
     }
-    const opening = demo.demoOpening(text, cards(0))
-    if (!opening.includes('110') || !opening.includes('任何人不受伤')) {
-      failures.push(`他伤引导缺少报警或边界：${text}`)
-    }
-    const history = [
-      { role: 'assistant', content: '我在听。', at: 1 },
-      { role: 'user', content: text, at: 2 },
-    ]
-    const reply = demo.demoReply(text, cards(0), history)
-    if (!reply.includes('110') || !reply.includes('他人')) {
-      failures.push(`他伤回应缺少安全引导：${text}`)
-    }
-    const insight = demo.demoInsight(text, cards(0), history)
-    if (!insight.crisis || !insight.title.includes('没有人受伤')) {
-      failures.push(`他伤记录未进入安全状态：${text}`)
-    }
-    const suggestions = demo.demoSuggestions(text)
-    if (!suggestions.some((item) => item.includes('求助') || item.includes('警察'))) {
-      failures.push(`他伤建议缺少求助入口：${text}`)
-    }
-  })
-  DANGER_PHRASES.forEach((text) => {
-    const kind = crisis.detectSafetyConcern(text)
-    if (kind !== 'other' && kind !== 'both') {
-      failures.push(`受威胁语句未识别：${text} -> ${kind}`)
-      return
-    }
-    const opening = demo.demoOpening(text, cards(0))
-    if (!opening.includes('110') || !opening.includes('任何人不受伤')) {
-      failures.push(`受威胁引导缺少报警或安全边界：${text}`)
+    if (content.steps.length === 0) {
+      failures.push(`安全分类 ${kind} 缺少行动步骤`)
     }
   })
   NON_HARM_PHRASES.forEach((text) => {
     if (crisis.detectSafetyConcern(text)) {
-      failures.push(`普通暴力词被误判为他伤：${text}`)
+      failures.push(`普通暴力词被误判为危机：${text}`)
     }
   })
 
@@ -315,7 +323,7 @@ try {
   const coverage = themed / QUESTIONS.length
   console.log(`本心模式覆盖测试：${themed}/${QUESTIONS.length} 命中具体主题（${Math.round(coverage * 100)}%）`)
   console.log(
-    `跑偏请求：${TASK_QUESTIONS.length} 条，自伤语句：${CRISIS_PHRASES.length + 1} 条，他伤语句：${HARM_PHRASES.length} 条，受威胁语句：${DANGER_PHRASES.length} 条，追问 ${CRISIS_FOLLOWUPS.length} 条，误判检查：${NON_CRISIS_PHRASES.length + NON_HARM_PHRASES.length} 条`,
+    `跑偏请求：${TASK_QUESTIONS.length} 条，自伤语句：${CRISIS_PHRASES.length + 1} 条，他伤语句：${HARM_PHRASES.length} 条，性暴力意图：${SEXUAL_HARM_PHRASES.length} 条，性侵受害：${SEXUAL_ASSAULT_PHRASES.length} 条，受威胁：${DANGER_PHRASES.length} 条，追问 ${CRISIS_FOLLOWUPS.length} 条，误判检查：${NON_CRISIS_PHRASES.length + NON_HARM_PHRASES.length} 条，分类文案：${Object.keys(safety.SAFETY_COPY).length} 类`,
   )
   console.log(`牌库测试：78 张（22 大 + 56 小），正逆位均出现，300 轮无重复牌`)
   if (failures.length > 0) {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { CSSProperties } from 'react'
+import { isLitePerf } from '../lib/perf'
 
 interface Star {
   left: number
@@ -92,9 +93,10 @@ const constellationGroups = [
 ]
 
 export default function Background() {
+  const lite = useMemo(() => isLitePerf(), [])
   const stars = useMemo<Star[]>(
     () =>
-      Array.from({ length: 110 }, () => ({
+      Array.from({ length: lite ? 30 : 110 }, () => ({
         left: Math.random() * 100,
         top: Math.random() * 100,
         size: Math.random() * 1.8 + 0.8,
@@ -102,26 +104,28 @@ export default function Background() {
         duration: Math.random() * 5 + 3,
         opacity: Math.random() * 0.5 + 0.2,
       })),
-    [],
+    [lite],
   )
   const dust = useMemo<Dust[]>(
     () =>
-      Array.from({ length: 26 }, () => ({
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        size: Math.random() * 2.2 + 1,
-        delay: Math.random() * 9,
-        duration: Math.random() * 8 + 9,
-        dx: (Math.random() - 0.5) * 46,
-        dy: (Math.random() - 0.5) * 70 - 22,
-        opacity: Math.random() * 0.45 + 0.15,
-      })),
-    [],
+      lite
+        ? []
+        : Array.from({ length: 26 }, () => ({
+            left: Math.random() * 100,
+            top: Math.random() * 100,
+            size: Math.random() * 2.2 + 1,
+            delay: Math.random() * 9,
+            duration: Math.random() * 8 + 9,
+            dx: (Math.random() - 0.5) * 46,
+            dy: (Math.random() - 0.5) * 70 - 22,
+            opacity: Math.random() * 0.45 + 0.15,
+          })),
+    [lite],
   )
   const cursorRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (window.matchMedia('(pointer: coarse)').matches) return
+    if (lite || window.matchMedia('(pointer: coarse)').matches) return
     let frame = 0
     const onMove = (event: PointerEvent) => {
       if (frame) return
@@ -137,7 +141,51 @@ export default function Background() {
       window.removeEventListener('pointermove', onMove)
       if (frame) window.cancelAnimationFrame(frame)
     }
-  }, [])
+  }, [lite])
+
+  if (lite) {
+    return (
+      <div className="sky sky-lite" aria-hidden="true">
+        <div className="sky-lite-aurora" />
+        <span className="sky-moon" />
+        <svg className="sky-lite-ring" viewBox="0 0 800 800" fill="none">
+          <circle
+            cx="400"
+            cy="400"
+            r="382"
+            stroke="currentColor"
+            strokeWidth="0.6"
+            opacity="0.5"
+          />
+          <circle
+            cx="400"
+            cy="400"
+            r="286"
+            stroke="currentColor"
+            strokeWidth="0.4"
+            strokeDasharray="2 12"
+            opacity="0.35"
+          />
+        </svg>
+        <div className="sky-stars">
+          {stars.map((star, index) => (
+            <span
+              key={index}
+              className="sky-star"
+              style={{
+                left: `${star.left}%`,
+                top: `${star.top}%`,
+                width: `${star.size}px`,
+                height: `${star.size}px`,
+                opacity: star.opacity,
+              }}
+            />
+          ))}
+        </div>
+        <div className="sky-veil" />
+      </div>
+    )
+  }
 
   return (
     <div className="sky" aria-hidden="true">

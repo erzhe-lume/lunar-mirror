@@ -150,6 +150,19 @@ export default function ReadingView({
   useEffect(() => {
     if (phase === 'insight') {
       window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (window.location.hash !== '#/reading/insight') {
+        window.history.replaceState(
+          { view: 'reading', phase: 'insight' },
+          '',
+          '#/reading/insight',
+        )
+      }
+    } else if (window.location.hash.startsWith('#/reading/')) {
+      window.history.replaceState(
+        { view: 'reading', phase: 'chat' },
+        '',
+        '#/reading',
+      )
     }
   }, [phase])
 
@@ -405,11 +418,11 @@ export default function ReadingView({
                 </span>
                 <div className="chat-headings">
                   <span className="chat-title">
-                    心镜
+                    月鉴
                     {offlineLabel && <em className="demo-tag">本心模式</em>}
                   </span>
                   <span className="chat-subtitle">
-                    MIRROR ARCANA · 安静的回声
+                    LUNAR MIRROR · 安静的回声
                   </span>
                 </div>
               </div>
@@ -456,7 +469,7 @@ export default function ReadingView({
               role="log"
               aria-live="polite"
               aria-relevant="additions"
-              aria-label="心镜的回应"
+              aria-label="月鉴的回应"
             >
               {messages.length === 0 && busy && (
                 <div className="chat-empty">
@@ -549,14 +562,20 @@ export default function ReadingView({
                 rows={2}
                 value={input}
                 maxLength={400}
-                aria-label="写下给心镜的回信"
+                aria-label="写下给月鉴的回信"
                 placeholder="写下此刻想到的，不必组织得很完整…"
+                enterKeyHint="send"
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    send()
+                  if (event.key !== 'Enter' || event.shiftKey) return
+                  if (
+                    event.nativeEvent.isComposing ||
+                    event.nativeEvent.keyCode === 229
+                  ) {
+                    return
                   }
+                  event.preventDefault()
+                  send()
                 }}
                 disabled={busy}
               />

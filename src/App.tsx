@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DrawnCard, JournalEntry, Settings } from './types'
 import { setBgmVolume, startBgm, stopBgm } from './lib/bgm'
 import { detectSafetyConcern, type SafetyKind } from './lib/crisis'
@@ -39,7 +39,7 @@ const VIEWS: View[] = ['home', 'draw', 'reading', 'journal', 'mirror']
 const hashFor = (view: View) => `#/${view}`
 
 function viewFromHash(): View | null {
-  const value = window.location.hash.replace(/^#\/?/, '')
+  const value = window.location.hash.replace(/^#\/?/, '').split('/')[0]
   return VIEWS.includes(value as View) ? (value as View) : null
 }
 
@@ -55,7 +55,13 @@ interface Session extends Draft {
 
 export default function App() {
   const [restored] = useState(() => loadNavigation())
-  const [view, setView] = useState<View>(() => restored?.view ?? 'home')
+  const [initialRoute] = useState<View | null>(() => viewFromHash())
+  const initialView = (() => {
+    if (initialRoute === 'reading' && !restored?.session) return 'home'
+    if (initialRoute === 'draw' && !restored?.draft) return 'home'
+    return initialRoute ?? restored?.view ?? 'home'
+  })()
+  const [view, setView] = useState<View>(initialView)
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [draft, setDraft] = useState<Draft | null>(
@@ -72,9 +78,11 @@ export default function App() {
     querent?: string
     kind: SafetyKind
   } | null>(null)
-  const [introOpen, setIntroOpen] = useState(
-    () => !restored || restored.view === 'home',
-  )
+  const [introOpen, setIntroOpen] = useState(() => {
+    if (initialRoute && initialView !== 'home') return false
+    return !restored || restored.view === 'home'
+  })
+  const [entered, setEntered] = useState(() => !introOpen)
   const firstHistoryRef = useRef(true)
   const skipHistoryRef = useRef(false)
   const viewRef = useRef(view)
@@ -92,14 +100,25 @@ export default function App() {
     const hash = hashFor(view)
     if (firstHistoryRef.current) {
       firstHistoryRef.current = false
-      window.history.replaceState({ view }, '', hash)
+      if (window.location.hash.startsWith(hash)) {
+        window.history.replaceState(
+          { ...(window.history.state ?? {}), view },
+          '',
+          window.location.hash,
+        )
+      } else {
+        window.history.replaceState({ view }, '', hash)
+      }
       return
     }
     if (skipHistoryRef.current) {
       skipHistoryRef.current = false
       return
     }
-    if (window.history.state?.view === view && window.location.hash === hash) {
+    const hashMatchesView =
+      window.location.hash === hash ||
+      window.location.hash.startsWith(`${hash}/`)
+    if (window.history.state?.view === view && hashMatchesView) {
       return
     }
     window.history.pushState({ view }, '', hash)
@@ -177,11 +196,11 @@ export default function App() {
 
   useEffect(() => {
     const titles: Record<View, string> = {
-      home: '心镜 · 塔罗自省',
-      draw: '抽牌 · 心镜',
-      reading: '照见 · 心镜',
-      journal: '时间线 · 心镜',
-      mirror: '镜面 · 心镜',
+      home: '月鉴 · 塔罗自省',
+      draw: '抽牌 · 月鉴',
+      reading: '照见 · 月鉴',
+      journal: '时间线 · 月鉴',
+      mirror: '镜面 · 月鉴',
     }
     document.title = titles[view]
   }, [view])
@@ -269,19 +288,25 @@ export default function App() {
     setSettingsOpen(false)
   }
 
+  const finishIntro = useCallback(() => {
+    setEntered(true)
+    setIntroOpen(false)
+  }, [])
+
   return (
     <div className={`app ${introOpen ? 'is-intro' : 'is-entered'}`}>
       <Background />
       {!introOpen && <PosterFrame />}
-      <div className="app-inner">
+      {entered && (
+        <div className="app-inner">
         <header className="site-head">
-          <button type="button" className="brand" onClick={goHome} aria-label="回到心镜首页">
+          <button type="button" className="brand" onClick={goHome} aria-label="回到月鉴首页">
             <span className="brand-mark" aria-hidden="true">
               <SealMark />
             </span>
             <span className="brand-text">
-              <strong>心镜</strong>
-              <em>MIRROR ARCANA</em>
+              <strong>月鉴</strong>
+              <em>LUNAR MIRROR</em>
             </span>
           </button>
           <nav className="site-nav" aria-label="主导航">
@@ -359,7 +384,7 @@ export default function App() {
         </main>
 
         <footer className="site-foot">
-          <span>心镜 · MIRROR ARCANA</span>
+          <span>月鉴 · LUNAR MIRROR</span>
           <button
             type="button"
             className="foot-replay"
@@ -369,7 +394,8 @@ export default function App() {
           </button>
           <span>塔罗不预言命运，只邀请你看见自己</span>
         </footer>
-      </div>
+        </div>
+      )}
 
       <SettingsModal
         open={settingsOpen}
@@ -381,12 +407,13 @@ export default function App() {
       />
       {safetyGate && (
         <SafetyGate
+          key={safetyGate.kind}
           querent={safetyGate.querent}
           kind={safetyGate.kind}
           onClose={() => setSafetyGate(null)}
         />
       )}
-      {introOpen && <Intro onDone={() => setIntroOpen(false)} />}
+      {introOpen && <Intro onDone={finishIntro} />}
     </div>
   )
 }

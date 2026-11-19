@@ -12,6 +12,30 @@
     linear-gradient(160deg, #05040a 0%, #0a0712 42%, #07050c 100%);
 }
 
+.sky-lite-aurora {
+  position: absolute;
+  inset: -12% -20% auto -20%;
+  height: 72vh;
+  pointer-events: none;
+  background:
+    radial-gradient(52% 44% at 28% 38%, var(--violet), transparent 72%),
+    radial-gradient(48% 40% at 76% 18%, var(--rose), transparent 74%),
+    radial-gradient(40% 36% at 58% 62%, var(--moon), transparent 78%);
+  opacity: 0.14;
+}
+
+.sky-lite-ring {
+  position: absolute;
+  top: 46%;
+  left: 66%;
+  width: min(720px, 96vw);
+  height: auto;
+  color: var(--gold);
+  opacity: 0.09;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
 .sky-aurora {
   position: absolute;
   width: 120vw;
@@ -778,11 +802,14 @@
   font-size: 14.5px;
   font-weight: 600;
   letter-spacing: 0.12em;
-  color: #181005;
+  color: var(--site-on-accent);
   background: linear-gradient(135deg, #efd79f, #c29a52);
   border-radius: 999px;
   box-shadow: 0 10px 30px rgba(217, 182, 103, 0.22);
-  transition: transform 0.25s, box-shadow 0.25s, opacity 0.25s;
+  transition:
+    transform calc(0.25s * var(--site-motion, 1)),
+    box-shadow calc(0.25s * var(--site-motion, 1)),
+    opacity calc(0.25s * var(--site-motion, 1));
 }
 
 .primary-btn::after {
@@ -1898,7 +1925,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22px;
+  gap: calc(22px * var(--site-space, 1));
   max-width: 1040px;
   margin: 0 auto;
   text-align: center;
@@ -2237,7 +2264,7 @@
 .hero-title {
   margin: 10px 0 0;
   padding-left: 0.18em;
-  font-size: clamp(64px, 10vw, 96px);
+  font-size: calc(clamp(64px, 10vw, 96px) * var(--site-type, 1));
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.18em;
@@ -2326,11 +2353,13 @@
   position: relative;
   width: 100%;
   max-width: 640px;
-  padding: 26px 26px 22px;
+  padding: calc(26px * var(--site-space, 1)) calc(26px * var(--site-space, 1))
+    calc(22px * var(--site-space, 1));
+  font-size: calc(16px * var(--site-type, 1));
   text-align: left;
   background: linear-gradient(180deg, rgba(19, 21, 37, 0.88), rgba(12, 14, 25, 0.92));
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: calc(20px + var(--site-radius, 0px));
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(14px);
   animation: panelGlow 7s ease-in-out infinite;
@@ -2477,15 +2506,17 @@
 .ask-input {
   width: 100%;
   min-height: 90px;
-  padding: 14px 16px;
+  padding: calc(14px * var(--site-space, 1)) calc(16px * var(--site-space, 1));
   line-height: 1.7;
   color: var(--ink);
   background: rgba(6, 7, 14, 0.55);
   border: 1px solid rgba(217, 182, 103, 0.16);
-  border-radius: 12px;
+  border-radius: calc(12px + var(--site-radius, 0px));
   outline: none;
   resize: vertical;
-  transition: border-color 0.25s, box-shadow 0.25s;
+  transition:
+    border-color calc(0.25s * var(--site-motion, 1)),
+    box-shadow calc(0.25s * var(--site-motion, 1));
 }
 
 .ask-input::placeholder {
@@ -4745,7 +4776,7 @@
   overflow: hidden;
   background: linear-gradient(165deg, rgba(24, 26, 44, 0.92), rgba(13, 15, 26, 0.96));
   border: 1px solid rgba(217, 182, 103, 0.25);
-  border-radius: 22px;
+  border-radius: calc(22px + var(--site-radius, 0px));
   box-shadow: 0 34px 90px rgba(0, 0, 0, 0.5);
   animation: riseIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -5189,7 +5220,7 @@
   width: 100%;
   max-width: 780px;
   padding: 22px 24px;
-  background: rgba(217, 182, 103, 0.03);
+  background: var(--site-surface);
   border: 1px solid rgba(217, 182, 103, 0.18);
   border-radius: 16px;
 }
@@ -6295,7 +6326,7 @@
   }
 
   .hero-title {
-    font-size: 64px;
+    font-size: calc(64px * var(--site-type, 1));
   }
 
   .home-view {
@@ -6312,6 +6343,8 @@
   .hero-fan {
     height: 170px;
     padding: 0 10px;
+    overflow-x: clip;
+    overflow-y: visible;
   }
 
   .hero-copy {
@@ -6669,7 +6702,7 @@
   }
 
   .ask-panel {
-    padding: 20px 16px;
+    padding: calc(20px * var(--site-space, 1)) calc(16px * var(--site-space, 1));
   }
 
   .hero-line {
@@ -6936,4 +6969,779 @@
   line-height: 1.85;
   color: #f0e4ce;
   border-left: 1px solid rgba(217, 182, 103, 0.42);
+}
+
+/* ---------- 移动端轻量模式 ---------- */
+html[data-perf='lite'] *,
+html[data-perf='lite'] *::before,
+html[data-perf='lite'] *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+html[data-perf='lite'] .sky,
+html[data-perf='lite'] .sky *,
+html[data-perf='lite'] .intro,
+html[data-perf='lite'] .intro * {
+  mix-blend-mode: normal !important;
+}
+
+html[data-perf='lite'] .intro {
+  transition: opacity 0.55s ease, visibility 0s linear 0.55s;
+}
+
+html[data-perf='lite'] .intro.is-leaving {
+  filter: none;
+  transform: none;
+}
+
+html[data-perf='lite'] .intro-nebula,
+html[data-perf='lite'] .intro-beam,
+html[data-perf='lite'] .portal-bloom,
+html[data-perf='lite'] .portal-halo,
+html[data-perf='lite'] .portal-orbit,
+html[data-perf='lite'] .portal-flare,
+html[data-perf='lite'] .portal-seam,
+html[data-perf='lite'] .intro-shockwave,
+html[data-perf='lite'] .intro-flare,
+html[data-perf='lite'] .intro-progress,
+html[data-perf='lite'] .back-glow,
+html[data-perf='lite'] .sky-grain,
+html[data-perf='lite'] .sky-dust,
+html[data-perf='lite'] .shooting,
+html[data-perf='lite'] .sky-bokeh,
+html[data-perf='lite'] .ask-mist,
+html[data-perf='lite'] .chat-atmosphere {
+  display: none !important;
+}
+
+html[data-perf='lite'] .intro-card {
+  filter: none;
+  will-change: transform, opacity;
+  transition: transform 0.9s cubic-bezier(0.16, 0.9, 0.24, 1),
+    opacity 0.45s ease;
+}
+
+html[data-perf='lite'] .intro-portal {
+  clip-path: none;
+  transition: opacity 0.75s ease,
+    transform 1s cubic-bezier(0.16, 0.84, 0.28, 1);
+}
+
+html[data-perf='lite'] .intro-title,
+html[data-perf='lite'] .intro-title span {
+  filter: none;
+}
+
+html[data-perf='lite'] .hero-fan-card,
+html[data-perf='lite'] .hero-fan-card.is-center {
+  filter: none;
+}
+
+html[data-perf='lite'] .hero-fan-card .tarot-card,
+html[data-perf='lite'] .intro-card .tarot-card {
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.4);
+}
+
+html[data-perf='lite'] .tarot-back::before {
+  display: none;
+}
+
+html[data-perf='lite'] .modal-veil {
+  background: rgba(3, 4, 9, 0.86);
+}
+
+html[data-perf='lite'] .ring-halo {
+  display: none !important;
+}
+
+/* ---------- 手机端控件与触控 ---------- */
+@media (max-width: 760px) {
+  .querent-input,
+  .ask-input,
+  .chat-input textarea,
+  .revisit textarea,
+  .settings-modal input,
+  .settings-modal textarea,
+  .settings-modal select {
+    font-size: 16px;
+  }
+
+  .stage-head > .text-btn,
+  .ritual-actions .text-btn,
+  .fan-actions .ghost-btn,
+  .ring-page-btn,
+  .modal-actions > .ghost-btn,
+  .modal-actions > .primary-btn,
+  .settings-footer .ghost-btn,
+  .settings-footer .primary-btn,
+  .secret-row .ghost-btn,
+  .model-add-btn,
+  .protocol-pill,
+  .provider-chip {
+    min-height: 44px;
+  }
+
+  .ring-page-btn {
+    padding: 8px 14px;
+    font-size: 10.5px;
+  }
+
+  .chat-voice-toggle {
+    min-height: 40px;
+  }
+
+  .suggestion-chip {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .send-btn {
+    min-height: 44px;
+  }
+
+  .settings-tab {
+    min-height: 44px;
+  }
+
+  .model-row-more {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (max-width: 720px) {
+  .reading-view .chat-panel {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .reading-view .chat-scroll {
+    flex: 0 0 auto;
+    min-height: 200px;
+    max-height: 42svh;
+  }
+
+  .reply-suggestions {
+    padding: 8px 14px;
+  }
+
+  .suggestion-row {
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .suggestion-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .suggestion-chip {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .reading-grid,
+  .chat-panel,
+  .chat-head,
+  .chat-scroll,
+  .bubble-row,
+  .bubble,
+  .reply-suggestions,
+  .suggestion-row,
+  .chat-input,
+  .finish-btn {
+    min-width: 0;
+  }
+
+  .chat-panel {
+    width: 100%;
+  }
+
+  .reply-suggestions {
+    overflow: hidden;
+  }
+
+  .suggestion-row {
+    max-width: 100%;
+  }
+
+  .mirror-actions .ghost-btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 360px) {
+  .fan-zone {
+    overflow-x: clip;
+  }
+
+  .fan {
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 760px) {
+  .insight-tools .ghost-btn,
+  .transcript summary {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 360px) {
+  .settings-footer .primary-btn {
+    padding: 10px 12px;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .settings-footer .ghost-btn {
+    padding: 10px 12px;
+  }
+}
+
+/* ---------- 手机端排版与字号 ---------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.hero-sub,
+.hero-line,
+.stage-question p,
+.local-ribbon,
+.bubble p,
+.insight-question,
+.insight-mirror,
+.oracle-verse p,
+.insight-sections p,
+.letter-body p,
+.revisit-question,
+.revisit-answer,
+.revisit-note p,
+.safety-lead,
+.safety-steps li,
+.modal-note,
+.mirror-block p,
+.ring-hint,
+.mode-note,
+.privacy-note {
+  overflow-wrap: break-word;
+  line-break: strict;
+  text-wrap: pretty;
+}
+
+.hero-sub,
+.stage-question p,
+.insight-meta h2,
+.oracle-verse p,
+.modal-head h3,
+.safety-modal h2 {
+  text-wrap: balance;
+}
+
+@media (max-width: 760px) {
+  .site-nav .nav-btn {
+    font-size: 12px;
+  }
+
+  .hero-eyebrow {
+    font-size: 10.5px;
+    letter-spacing: 0.24em;
+  }
+
+  .hero-ritual {
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+  }
+
+  .mode-note,
+  .privacy-note {
+    font-size: 12.5px;
+    line-height: 1.85;
+  }
+
+  .chat-title {
+    font-size: 16px;
+  }
+
+  .chat-voice-toggle {
+    font-size: 11.5px;
+  }
+
+  .demo-tag {
+    font-size: 9.5px;
+  }
+
+  .local-ribbon {
+    padding: 8px 14px;
+    font-size: 11.5px;
+    line-height: 1.7;
+    letter-spacing: 0.03em;
+  }
+
+  .bubble {
+    font-size: 15px;
+    line-height: 1.85;
+  }
+
+  .bubble-mirror {
+    font-size: 15.5px;
+    line-height: 1.9;
+    letter-spacing: 0.01em;
+  }
+
+  .suggestion-hint {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+
+  .suggestion-chip {
+    font-size: 13px;
+  }
+
+  .chat-input-label {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+  }
+
+  .send-btn {
+    font-size: 14px;
+  }
+
+  .finish-btn {
+    font-size: 13px;
+  }
+
+  .fan-hint {
+    font-size: 10.5px;
+    letter-spacing: 0.25em;
+  }
+
+  .fan-count {
+    font-size: 12.5px;
+  }
+
+  .ring-hint {
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    line-height: 1.7;
+  }
+
+  .ring-ritual-label {
+    font-size: 8.5px;
+  }
+
+  .ring-ritual-meta {
+    font-size: 8.5px;
+  }
+
+  .ring-ritual-enter {
+    font-size: 9.5px;
+  }
+
+  .insight-question {
+    font-size: 14.5px;
+    line-height: 1.8;
+  }
+
+  .oracle-verse p {
+    font-size: 16px;
+    line-height: 1.95;
+    letter-spacing: 0.04em;
+  }
+
+  .oracle-verse-label {
+    font-size: 9.5px;
+    letter-spacing: 0.3em;
+  }
+
+  .insight-sections h4 {
+    font-size: 13.5px;
+    letter-spacing: 0.14em;
+  }
+
+  .insight-sections p {
+    font-size: 15px;
+    line-height: 1.9;
+  }
+
+  .keyword-chip {
+    font-size: 12px;
+  }
+
+  .insight-tools span {
+    font-size: 11px;
+  }
+
+  .insight-tools .ghost-btn {
+    font-size: 13.5px;
+  }
+
+  .insight-saved-note {
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  .letter-body {
+    font-size: 16px;
+  }
+
+  .revisit-question {
+    font-size: 14px;
+  }
+
+  .revisit-answer {
+    font-size: 16px;
+  }
+
+  .revisit-note p {
+    font-size: 14.5px;
+  }
+
+  .revisit .primary-btn {
+    padding: 12px 22px;
+    font-size: 14px;
+  }
+
+  .transcript summary {
+    font-size: 13.5px;
+  }
+
+  .settings-tab {
+    font-size: 12px;
+  }
+
+  .field-hint {
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .model-manager-hint,
+  .model-manager-empty {
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .model-manager-foot {
+    font-size: 10.5px;
+  }
+
+  .model-add-btn {
+    font-size: 12px;
+  }
+
+  .theme-option-copy em {
+    font-size: 11px;
+  }
+
+  .settings-section-title {
+    font-size: 11px;
+    letter-spacing: 0.24em;
+  }
+
+  .modal-note {
+    font-size: 12.5px;
+    line-height: 1.7;
+  }
+
+  .safety-lead,
+  .safety-querent {
+    font-size: 14px;
+  }
+
+  .safety-steps {
+    font-size: 13.5px;
+  }
+
+  .safety-call span {
+    font-size: 11.5px;
+  }
+}
+
+@media (max-width: 420px) {
+  .model-manager-head {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .model-manager-head .model-add-btn {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 360px) {
+  .hero-fan-card {
+    margin-inline: -17px;
+  }
+
+  .draw-view .fan-card {
+    margin-inline: -22px;
+  }
+}
+
+@media (max-width: 760px) {
+  .hero-fan-card .card-badge,
+  .intro-card .card-badge,
+  .spread-slot .card-badge,
+  .spread-fan-card .card-badge,
+  .insight-card-item .card-badge,
+  .ring-ritual .card-badge {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .ask-label {
+    font-size: 18px;
+    letter-spacing: 0.03em;
+    text-wrap: balance;
+  }
+
+  .insight-card {
+    padding: 20px 16px;
+  }
+
+  .insight-mirror {
+    padding: 14px 16px;
+    font-size: clamp(16px, 4.4vw, 19px);
+  }
+
+  .insight-question {
+    text-wrap: balance;
+  }
+
+  .oracle-verse {
+    padding: 16px 8px 18px;
+  }
+
+  .oracle-verse p {
+    font-size: clamp(14px, 4.2vw, 16px);
+    letter-spacing: 0;
+    line-height: 1.9;
+  }
+}
+
+@media (max-width: 360px) {
+  .modal-head {
+    gap: 8px;
+  }
+
+  .modal-head h3 {
+    font-size: 18px;
+    letter-spacing: 0.02em;
+  }
+}
+
+.verse-term {
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .intro-card .card-frame {
+    margin: 5px;
+    padding: 8px 4px 10px;
+  }
+
+  .intro-card .card-numeral {
+    font-size: 7px;
+    letter-spacing: 0.12em;
+  }
+
+  .intro-card .card-numeral::before,
+  .intro-card .card-numeral::after {
+    width: 6px;
+  }
+
+  .intro-card .card-emblem {
+    width: 36px;
+    height: 36px;
+    margin-top: 9px;
+    font-size: 17px;
+  }
+
+  .intro-card .card-name {
+    padding-left: 0.04em;
+    font-size: 16px;
+    letter-spacing: 0.08em;
+  }
+
+  .intro-card .card-en {
+    font-size: 5.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .intro-card .card-keywords {
+    font-size: 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .intro-card .card-arch {
+    top: 26%;
+    width: 60%;
+  }
+
+  .intro-card .card-brand {
+    display: none;
+  }
+
+  .spread-slot .card-name {
+    padding-left: 0;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .spread-slot .card-en,
+  .spread-slot .card-keywords {
+    display: none;
+  }
+
+  .spread-slot .card-emblem {
+    width: 44px;
+    height: 44px;
+    margin-top: 11px;
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 760px) {
+  .draw-whisper {
+    letter-spacing: 0.08em;
+    line-break: strict;
+    text-wrap: balance;
+  }
+
+  .ring-ritual .card-keywords,
+  .hero-fan-card .card-keywords {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .intro-card .card-keywords,
+  .insight-card-item .card-keywords,
+  .spread-fan-card .card-keywords {
+    display: none;
+  }
+
+  .spread-slot .card-brand,
+  .insight-card-item .card-brand,
+  .ring-ritual .card-brand,
+  .spread-fan-card .card-brand {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .intro-skip {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .insight-card-item .card-name {
+    padding-left: 0;
+    font-size: 12px;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .ring-ritual .card-name {
+    padding-left: 0;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .spread-slot .card-name {
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .intro-fan {
+    height: 170px;
+    --fan-step: 42px;
+  }
+
+  .intro-card {
+    width: 100px;
+  }
+
+  .intro-portal {
+    top: 37%;
+    width: min(540px, 52vw, 64vh);
+  }
+
+  .intro-title {
+    font-size: clamp(40px, 11vh, 52px);
+  }
+
+  .modal-veil {
+    padding: 8px;
+  }
+
+  .settings-modal {
+    height: calc(100svh - 16px);
+    max-height: none;
+    gap: 8px;
+    padding: 14px 18px 12px;
+  }
+
+  .settings-modal .modal-head h3 {
+    font-size: 18px;
+  }
+
+  .settings-tabs {
+    padding: 5px 18px 0;
+  }
+
+  .settings-tab {
+    padding: 6px 10px 8px;
+    font-size: 11.5px;
+  }
+
+  .settings-panels {
+    padding: 10px 18px;
+  }
+
+  .settings-footer {
+    padding: 8px 18px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .intro-footnote {
+    display: none;
+  }
+
+  .intro-card .card-keywords,
+  .intro-card .card-brand {
+    display: none;
+  }
+
+  .intro-skip {
+    min-height: 44px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .intro-card .card-badge {
+    display: none;
+  }
 }
