@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { JournalEntry, TarotCard as TarotCardData } from '../types'
+import { parseBackup } from '../lib/backup'
 import { classifyTheme } from '../lib/demo'
 import { formatShortDate } from '../lib/format'
 import { revisitsOf } from '../lib/revisits'
@@ -11,12 +12,40 @@ interface Props {
   entries: JournalEntry[]
   onBack: () => void
   onOpenJournal: () => void
+  onImport: (entries: JournalEntry[]) => Promise<{
+    added: number
+    updated: number
+  }>
 }
 
 const GENERIC_WORDS = new Set(['此刻', '变化', '选择', '自省', '换一个问题'])
 
-export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
+function readFileText(file: File): Promise<string> {
+  if (typeof file.text === 'function') return file.text()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () =>
+      resolve(typeof reader.result === 'string' ? reader.result : '')
+    reader.onerror = () =>
+      reject(reader.error ?? new Error('读取备份文件失败。'))
+    reader.readAsText(file)
+  })
+}
+
+export default function MirrorView({
+  entries,
+  onBack,
+  onOpenJournal,
+  onImport,
+}: Props) {
   const [exported, setExported] = useState(false)
+  const [now] = useState(() => Date.now())
+  const [importing, setImporting] = useState(false)
+  const [importStatus, setImportStatus] = useState<{
+    tone: 'ok' | 'error'
+    text: string
+  } | null>(null)
+  const fileRef = useRef<HTMLInputElement | null>(null)
 
   const stats = useMemo(() => {
     const themes = new Map<string, { label: string; count: number }>()
@@ -64,8 +93,8 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
       .slice(0, 3)
     const oldest = entries.length
       ? entries[entries.length - 1].createdAt
-      : Date.now()
-    const days = Math.max(1, Math.ceil((Date.now() - oldest) / 86400000))
+      : now
+    const days = Math.max(1, Math.ceil((now - oldest) / 86400000))
 
     return {
       themeList,
@@ -76,7 +105,7 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
       oldest,
       days,
     }
-  }, [entries])
+  }, [entries, now])
 
   const letter = useMemo(() => {
     if (entries.length === 0) return []
@@ -148,6 +177,58 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
     window.setTimeout(() => setExported(false), 2000)
   }
 
+  const chooseBackup = () => {
+    if (importing) return
+    fileRef.current?.click()
+  }
+
+  const importBackup = async (file: File) => {
+    if (file.size > 15 * 1024 * 1024) {
+      setImportStatus({ tone: 'error', text: '备份文件超过 15MB，无法导入。' })
+      return
+    }
+    setImporting(true)
+    setImportStatus(null)
+    try {
+      const parsed = parseBackup(await readFileText(file))
+      if (parsed.entries.length === 0) {
+        throw new Error('备份里没有找到可恢复的记录。')
+      }
+      const existing = new Set(entries.map((entry) => entry.id))
+      const conflicts = parsed.entries.filter((entry) =>
+        existing.has(entry.id),
+      ).length
+      if (
+        conflicts > 0 &&
+        !window.confirm(
+          `有 ${conflicts} 条记录已经存在，导入会用备份中的版本覆盖它们。继续吗？`,
+        )
+      ) {
+        return
+      }
+      const result = await onImport(parsed.entries)
+      const details = [
+        parsed.skipped > 0 ? `跳过 ${parsed.skipped} 条无法识别的记录` : '',
+        parsed.snapshotsDropped > 0
+          ? `忽略 ${parsed.snapshotsDropped} 张超大快照`
+          : '',
+      ].filter(Boolean)
+      setImportStatus({
+        tone: 'ok',
+        text: `已恢复 ${result.added} 条，更新 ${result.updated} 条${
+          details.length > 0 ? `；${details.join('，')}` : ''
+        }。`,
+      })
+    } catch (caught) {
+      setImportStatus({
+        tone: 'error',
+        text: caught instanceof Error ? caught.message : '导入失败，请重试。',
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <section className="view mirror-view">
       <header className="stage-head">
@@ -161,6 +242,27 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
         <span className="journal-count">{entries.length} 次照见</span>
       </header>
 
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".json,application/json,text/plain"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          event.target.value = ''
+          if (file) void importBackup(file)
+        }}
+      />
+
+      {importStatus && (
+        <p
+          className={`mirror-import-status is-${importStatus.tone}`}
+          role={importStatus.tone === 'error' ? 'alert' : 'status'}
+        >
+          {importStatus.text}
+        </p>
+      )}
+
       {entries.length === 0 ? (
         <div className="journal-empty">
           <CelestialEmpty variant="mirror" />
@@ -168,9 +270,19 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
           <p>
             完成一次抽牌与对话后，这里会把散落的记录连成一条路：反复出现的主题、词和牌。
           </p>
-          <button type="button" className="primary-btn" onClick={onBack}>
-            去抽一次牌
-          </button>
+          <div className="journal-empty-actions">
+            <button type="button" className="primary-btn" onClick={onBack}>
+              去抽一次牌
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={chooseBackup}
+              disabled={importing}
+            >
+              {importing ? '正在恢复…' : '从备份恢复'}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="mirror-grid">
@@ -185,6 +297,7 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
                 <p key={index}>{line}</p>
               ))}
             </div>
+            <p className="letter-coda">镜面不替你判断，只把重复照亮。</p>
             <div className="mirror-actions">
               <button
                 type="button"
@@ -192,6 +305,14 @@ export default function MirrorView({ entries, onBack, onOpenJournal }: Props) {
                 onClick={exportRecords}
               >
                 {exported ? '已导出' : '导出原始记录'}
+              </button>
+              <button
+                type="button"
+                className="ghost-btn small"
+                onClick={chooseBackup}
+                disabled={importing}
+              >
+                {importing ? '正在恢复…' : '导入记录'}
               </button>
               <button
                 type="button"

@@ -3,8 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      rel="preload"
+      href="/fonts/cinzel-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/cormorant-garamond-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#07080f" />
+    <meta name="theme-color" content="#07080a" />
     <meta
       name="description"
       content="月鉴 · 塔罗自省：不是预言，是一面镜子。抽三张牌，和此刻的自己谈一谈。"
@@ -38,17 +52,61 @@
         const reducedMotion = window.matchMedia(
           '(prefers-reduced-motion: reduce)',
         ).matches
-        const touchPointer = window.matchMedia('(any-pointer: coarse)').matches
+        const coarsePointer = window.matchMedia('(pointer: coarse)').matches
         const narrowScreen = window.matchMedia('(max-width: 760px)').matches
-        if (reducedMotion || touchPointer || narrowScreen) {
+        const shortScreen = window.matchMedia('(max-height: 520px)').matches
+        if (reducedMotion || (coarsePointer && (narrowScreen || shortScreen))) {
           document.documentElement.dataset.perf = 'lite'
         }
       })()
     </script>
     <title>月鉴 · 塔罗自省</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #07080f;
+      }
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        font-family: "Songti SC", SimSun, serif;
+        background: radial-gradient(circle at 50% 42%, #191426 0, #07080f 64%);
+      }
+      #boot .boot-seal {
+        display: grid;
+        width: 58px;
+        height: 58px;
+        place-items: center;
+        font-size: 24px;
+        color: #d9b667;
+        border: 1px solid rgba(217, 182, 103, 0.42);
+        border-radius: 50%;
+      }
+      #boot .boot-name {
+        font-family: "Cinzel", "Songti SC", serif;
+        font-size: 10px;
+        letter-spacing: 0.3em;
+        color: rgba(217, 182, 103, 0.66);
+      }
+      #root:not(:empty) ~ #boot {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot" aria-hidden="true">
+      <span class="boot-seal">月</span>
+      <span class="boot-name">LUNAR MIRROR</span>
+    </div>
     <noscript>月鉴需要启用 JavaScript 才能在本地完成抽牌与自省记录。</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

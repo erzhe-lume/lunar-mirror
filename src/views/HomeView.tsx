@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { JournalEntry, Settings } from '../types'
 import { MAJOR_ARCANA } from '../data/tarot'
 import { formatShortDate } from '../lib/format'
+import { dueRevisits } from '../lib/revisits'
 import Astrolabe from '../components/Astrolabe'
 import CameraModal from '../components/CameraModal'
 import CelestialArch from '../components/CelestialArch'
@@ -11,9 +12,10 @@ import TarotCard from '../components/TarotCard'
 
 interface Props {
   settings: Settings
-  latestEntry?: JournalEntry
+  entries: JournalEntry[]
   onStart: (question: string, snapshot?: string, querent?: string) => void
   onOpenJournal: () => void
+  onOpenEntry: (id: string) => void
   onOpenSettings: () => void
 }
 
@@ -22,11 +24,15 @@ const HERO_OFFSETS = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
 
 export default function HomeView({
   settings,
-  latestEntry,
+  entries,
   onStart,
   onOpenJournal,
+  onOpenEntry,
   onOpenSettings,
 }: Props) {
+  const [now] = useState(() => Date.now())
+  const latestEntry = entries[0]
+  const due = useMemo(() => dueRevisits(entries, now), [entries, now])
   const [question, setQuestion] = useState('')
   const [snapshot, setSnapshot] = useState<string | undefined>()
   const [cameraOpen, setCameraOpen] = useState(false)
@@ -223,13 +229,16 @@ export default function HomeView({
           <span className="cta-star" aria-hidden="true">✦</span>
         </button>
         {offline && (
-          <p className="mode-note">
-            本心模式：牌面给出几种声音，没有唯一答案；抽牌、追问、自省记录与回访都在本地完成。
+          <div className="mode-note">
+            <span className="mode-note-dot" aria-hidden="true" />
+            <p>
+              <strong>本心模式</strong>
+              <span>对话与记录只在本地完成</span>
+            </p>
             <button type="button" className="inline-link" onClick={onOpenSettings}>
-              打开设置
+              接入模型
             </button>
-            可接入千问、Claude、Gemini 或你的网关，获得实时对话。
-          </p>
+          </div>
         )}
       </div>
 
@@ -249,6 +258,43 @@ export default function HomeView({
               <span aria-hidden="true">→</span>
             </span>
           </button>
+          {due.length > 0 && (
+            <section className="home-aside-note revisit-reminder" aria-label="回访提醒">
+              <span className="eyebrow">回访 · REVISIT</span>
+              <p className="revisit-reminder-lead">
+                有 {due.length} 次照见可以回访了。
+                <span>
+                  {due[0].level === 'long'
+                    ? `其中一次已经放了 ${due[0].days} 天，回去看看它是否还在你身上。`
+                    : '时间把它们放了一会儿，回去看看当时的你看见了什么。'}
+                </span>
+              </p>
+              <div className="revisit-reminder-list">
+                {due.slice(0, 2).map(({ entry, days, level }) => (
+                  <button
+                    type="button"
+                    className="revisit-due"
+                    key={entry.id}
+                    onClick={() => onOpenEntry(entry.id)}
+                  >
+                    <span className={`revisit-due-meta ${level === 'long' ? 'is-long' : ''}`}>
+                      {formatShortDate(entry.createdAt)} · 已放 {days} 天
+                    </span>
+                    <span className="revisit-due-question">{entry.question}</span>
+                  </button>
+                ))}
+              </div>
+              {due.length > 2 && (
+                <button
+                  type="button"
+                  className="inline-link revisit-more"
+                  onClick={onOpenJournal}
+                >
+                  还有 {due.length - 2} 次在时间线里 →
+                </button>
+              )}
+            </section>
+          )}
           {latestEntry && (
             <button type="button" className="latest-card" onClick={onOpenJournal}>
               <span className="eyebrow">
@@ -272,14 +318,15 @@ export default function HomeView({
 
       <p className="privacy-note">对话与快照只保存在你的浏览器本机，不上传服务器。</p>
 
-      {createPortal(
-        <CameraModal
-          open={cameraOpen}
-          onClose={() => setCameraOpen(false)}
-          onCapture={(dataUrl) => setSnapshot(dataUrl)}
-        />,
-        document.body,
-      )}
+      {cameraOpen &&
+        createPortal(
+          <CameraModal
+            open
+            onClose={() => setCameraOpen(false)}
+            onCapture={(dataUrl) => setSnapshot(dataUrl)}
+          />,
+          document.body,
+        )}
     </section>
   )
 }

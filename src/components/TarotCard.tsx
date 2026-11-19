@@ -42,17 +42,18 @@ export default function TarotCard({
             <div className="card-frame">
               <span className="card-halo" aria-hidden="true" />
               <span className="card-arch" aria-hidden="true" />
-              <span className="card-corner corner-tl">✦</span>
-              <span className="card-corner corner-tr">✦</span>
-              <span className="card-corner corner-bl">✦</span>
-              <span className="card-corner corner-br">✦</span>
+              <span className="card-corner corner-tl" aria-hidden="true" />
+              <span className="card-corner corner-tr" aria-hidden="true" />
+              <span className="card-corner corner-bl" aria-hidden="true" />
+              <span className="card-corner corner-br" aria-hidden="true" />
               <span className="card-numeral">
                 <span>{card.roman}</span>
               </span>
               <span
                 className={`card-emblem ${orientation === 'reversed' ? 'is-reversed' : ''}`}
               >
-                {card.symbol}
+                <span className="card-emblem-orbit" aria-hidden="true" />
+                <span className="card-emblem-glyph">{card.symbol}</span>
               </span>
               <span className="card-name">{card.name}</span>
               <span className="card-en">{card.nameEn}</span>

@@ -21,11 +21,6 @@ const readEnv = (value: string | undefined, fallback: string) =>
 
 const QWEN_BASE = readEnv(import.meta.env.VITE_QWEN_BASE, '/api/qwen')
 const OPENAI_BASE = readEnv(import.meta.env.VITE_OPENAI_BASE, '/api/openai')
-const ANTHROPIC_BASE = readEnv(
-  import.meta.env.VITE_ANTHROPIC_BASE,
-  '/api/anthropic',
-)
-const GEMINI_BASE = readEnv(import.meta.env.VITE_GEMINI_BASE, '/api/gemini')
 const DEEPSEEK_BASE = readEnv(
   import.meta.env.VITE_DEEPSEEK_BASE,
   '/api/deepseek',
@@ -37,18 +32,6 @@ export const API_PROTOCOLS: ProtocolOption[] = [
     label: 'OpenAI 兼容',
     caption: 'Chat Completions',
     hint: '覆盖千问、DeepSeek、Kimi、OpenRouter 与多数网关。',
-  },
-  {
-    id: 'anthropic',
-    label: 'Anthropic',
-    caption: 'Messages',
-    hint: 'Claude 官方 Messages 协议，也适用于支持该协议的网关。',
-  },
-  {
-    id: 'gemini',
-    label: 'Gemini',
-    caption: 'generateContent',
-    hint: 'Google Gemini 官方协议，适合直连 Gemini 或对应网关。',
   },
 ]
 
@@ -70,22 +53,6 @@ export const PROVIDERS: ProviderPreset[] = [
     keyPlaceholder: 'sk-...',
   },
   {
-    id: 'claude',
-    label: 'Claude',
-    protocol: 'anthropic',
-    base: ANTHROPIC_BASE,
-    models: ['claude-sonnet-4-5', 'claude-haiku-4-5'],
-    keyPlaceholder: 'sk-ant-...',
-  },
-  {
-    id: 'gemini',
-    label: 'Gemini',
-    protocol: 'gemini',
-    base: GEMINI_BASE,
-    models: ['gemini-2.5-flash', 'gemini-2.5-pro'],
-    keyPlaceholder: 'Google AI Studio API Key',
-  },
-  {
     id: 'deepseek',
     label: 'DeepSeek',
     protocol: 'openai',
@@ -97,14 +64,14 @@ export const PROVIDERS: ProviderPreset[] = [
 
 export const PROTOCOL_LABEL: Record<ApiProtocol, string> = {
   openai: 'OpenAI 兼容',
-  anthropic: 'Anthropic',
-  gemini: 'Gemini',
+  anthropic: 'Anthropic（旧配置）',
+  gemini: 'Gemini（旧配置）',
 }
 
 const PROTOCOL_DEFAULT_BASE: Record<ApiProtocol, string> = {
   openai: OPENAI_BASE,
-  anthropic: ANTHROPIC_BASE,
-  gemini: GEMINI_BASE,
+  anthropic: '/api/anthropic',
+  gemini: '/api/gemini',
 }
 
 const PROTOCOL_DEFAULT_MODEL: Record<ApiProtocol, string> = {

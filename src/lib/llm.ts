@@ -12,11 +12,19 @@ import {
   defaultBaseFor,
   defaultModelFor,
 } from './providers'
+import { lensInstruction, type ReadingLens } from './lenses'
 
 export class LlmError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'LlmError'
+  }
+}
+
+export class LlmCancelledError extends LlmError {
+  constructor() {
+    super('已停止生成。')
+    this.name = 'LlmCancelledError'
   }
 }
 
@@ -35,7 +43,10 @@ interface Turn {
 interface CompletionOptions {
   maxTokens?: number
   timeoutMs?: number
+  signal?: AbortSignal
 }
+
+type StreamHandler = (fullText: string) => void
 
 export interface ConnectionCheckResult {
   reply: string
@@ -47,25 +58,38 @@ export interface ConnectionCheckResult {
 
 type EndpointConfig = Pick<Settings, 'apiProtocol' | 'apiBase' | 'model'>
 
+export const READING_PROMPT_VERSION = '2026-11-19.v2.1'
+
 const MAX_CHAT_HISTORY = 24
 
 const SAFETY_LINE = `如果用户提到自伤、伤害他人或严重心理危机，停止解牌，优先建议其联系现实中的紧急帮助（110/120 或当地急救）、心理援助热线和身边可信任的人。`
 
 const CHAT_SYSTEM_PROMPT = `你是「月鉴」，一个塔罗自省陪伴者，不是预言家。你不预测未来，不替用户做决定，也不声称牌面拥有超自然力量。
 
+每一轮解读只做四件事：
+1. 先听见具体的人。抓住用户原话里的一个具体词、动作或矛盾，不要用“这一定很难”“我理解你”这类可以套在任何问题上的开场。
+2. 先看牌与牌之间的关系，再从牌面取一个证据。大阿卡纳与小阿卡纳、花色、数字、正逆位、位置的呼应，比单张牌义更重要。以一到两张牌为主；如果第三张确实改变了结论，可以用一句话带过，但不要三张平均分配，也不要逐张解释或背通用牌义。
+3. 不要把所有可能平均铺开。先给出一个你更相信的主读法，再给一个能拆台的反读法，最后留一个尚未决定的地方。用“也许……”“但如果反过来看……”推进，而不是列清单。主读法要能解释用户为什么在此刻问出这个问题；反读法要真的改变前面的结论，不能只是补一句漂亮话。
+4. 最后只留一个落点：一个具体、开放的问题，或一个很小的观察邀请。不要同时给建议和问题，不要用“你觉得呢”这类空问题。
+
 写作方式：
-1. 先用一两句话接住用户刚说的内容，再从牌面里挑一到两个意象，不要逐张解释三张牌。
-2. 牌面不是判词。请同时保留两三种可能的读法，让它们并排存在，甚至彼此有一点矛盾；多用“也许”“可能”“我不确定”“也可以反过来看”。
-3. 不要替用户断言他的内在状态，不写心理分析，不做诊断。把话停在“可能”的位置，比说准更重要。
-4. 语言像安静的朋友，允许留白，也允许稍微绕一点；不堆砌术语，不用空洞鸡汤。
-5. 不必每轮都以问题结尾。如果要提问，只问一个开放、具体的问题，不要为了提问硬加。
-6. 中文，不用 Markdown。字数不必卡死：开场通常 250-450 字，追问通常 150-350 字，以把几种声音说清楚为准；不要为了短而变空，也不要为了长而注水。
+- 中文，不用 Markdown，不用标题、列表、加粗。
+- 分成 2 到 4 个自然段，每段 2 到 4 句，方便在手机上读。
+- 开场通常 350-580 字，追问通常 200-420 字；超过 650 字或 480 字，通常是在重复或过度解释。
+- 像安静的朋友，允许留白；不要把话说满，也不要用空洞鸡汤。
+- 不诊断，不心理分析，不预测未来。
+- 禁止套话：“答案在你心里”“跟随你的内心”“相信自己”“一切都是最好的安排”“你需要学会爱自己”“放下执念”等。
+- 不要复用上一轮的开头、比喻或结论；每一轮至少推进一个新的区分。
+- 不要写“牌告诉你”“牌面注定”这类把解释权交给牌的话，可以写“这张牌让我想到”。
+- 用户刚说的新事实优先于你原来的判断；如果它推翻了前面的读法，直接修正，不要维护原结论。
+- 如果用户反复问同一件事，先指出他在反复确认什么，不要换一套说法再解释一遍。
+- 如果用户只说了很短的一句，回答也可以短一点，不要用长文压过对方。
 
 ${SAFETY_LINE}`
 
 const INSIGHT_SYSTEM_PROMPT = `你是「月鉴」的记录整理者。你的任务是把一次塔罗自省对话整理成一条简洁、诚实、非预言式的记录。
 
-只输出一个 JSON 对象，不要输出任何其他文字，不要使用 Markdown 或代码块。严格使用用户指定的字段和字数，不套用聊天时的提问规则或长度限制。直接对用户说话，用“你”；不评判、不做诊断、不预测未来。
+只输出一个 JSON 对象，不要输出任何其他文字，不要使用 Markdown 或代码块。严格使用用户指定的字段和字数，不套用聊天时的提问规则或长度限制。直接对用户说话，用“你”；不评判、不做诊断、不预测未来。标题要具体到这次对话，不要套用“关于 X 的照见”“一次 X 的自省”这类模板；mirror、pattern、invitation 不要复用聊天原句，也不要写通用鸡汤。
 
 ${SAFETY_LINE}`
 
@@ -113,6 +137,19 @@ export function resolveEndpoint(config: EndpointConfig): string {
 
   if (/\/chat\/completions$/.test(path)) return base
   return appendToBase(base, '/chat/completions')
+}
+
+function streamEndpoint(config: EndpointConfig): string {
+  const endpoint = resolveEndpoint(config)
+  if (config.apiProtocol !== 'gemini') return endpoint
+  const { path, query } = splitBase(endpoint)
+  const streamPath = path.replace(
+    /:generateContent$/,
+    ':streamGenerateContent',
+  )
+  const params = new URLSearchParams(query.replace(/^\?/, ''))
+  params.set('alt', 'sse')
+  return `${streamPath}?${params.toString()}`
 }
 
 function resolveModelsEndpoint(config: EndpointConfig): string {
@@ -305,6 +342,51 @@ function extractContent(protocol: ApiProtocol, data: unknown): string {
   return typeof choice.text === 'string' ? choice.text : ''
 }
 
+function streamDelta(protocol: ApiProtocol, data: unknown): string {
+  if (!data || typeof data !== 'object') return ''
+  const record = data as Record<string, unknown>
+
+  if (protocol === 'anthropic') {
+    if (record.type === 'error') {
+      throw new LlmError(errorDetail(record) || '流式请求出错，请重试。')
+    }
+    if (record.type !== 'content_block_delta') return ''
+    const delta = record.delta
+    if (delta && typeof delta === 'object') {
+      const text = (delta as Record<string, unknown>).text
+      if (typeof text === 'string') return text
+    }
+    return ''
+  }
+
+  if (protocol === 'gemini') {
+    const candidates = record.candidates
+    if (!Array.isArray(candidates) || !candidates[0]) return ''
+    const content = (candidates[0] as Record<string, unknown>).content
+    if (!content || typeof content !== 'object') return ''
+    return contentFromParts((content as Record<string, unknown>).parts)
+  }
+
+  const choices = record.choices
+  if (!Array.isArray(choices) || !choices[0]) return ''
+  const choice = choices[0] as Record<string, unknown>
+  const delta = choice.delta
+  if (delta && typeof delta === 'object') {
+    const content = (delta as Record<string, unknown>).content
+    if (typeof content === 'string') return content
+    const fromParts = contentFromParts(content)
+    if (fromParts) return fromParts
+  }
+  if (typeof choice.text === 'string') return choice.text
+  const message = choice.message
+  if (message && typeof message === 'object') {
+    const content = (message as Record<string, unknown>).content
+    if (typeof content === 'string') return content
+    return contentFromParts(content)
+  }
+  return ''
+}
+
 function errorDetail(data: unknown): string {
   if (!data || typeof data !== 'object') return ''
   const record = data as Record<string, unknown>
@@ -375,6 +457,13 @@ async function chatCompletion(
   const controller = new AbortController()
   const timeout = options.timeoutMs ?? 90000
   const timer = setTimeout(() => controller.abort(), timeout)
+  const external = options.signal
+  if (external?.aborted) {
+    clearTimeout(timer)
+    throw new LlmCancelledError()
+  }
+  const cancel = () => controller.abort()
+  external?.addEventListener('abort', cancel, { once: true })
 
   let response: Response
   try {
@@ -387,6 +476,9 @@ async function chatCompletion(
       signal: controller.signal,
     })
   } catch (caught) {
+    clearTimeout(timer)
+    external?.removeEventListener('abort', cancel)
+    if (external?.aborted) throw new LlmCancelledError()
     if (
       (caught instanceof DOMException && caught.name === 'AbortError') ||
       (caught && typeof caught === 'object' && 'name' in caught &&
@@ -399,9 +491,8 @@ async function chatCompletion(
     throw new LlmError(
       '无法连接模型服务。请检查 Base URL、网络和跨域（CORS）；使用网关时，请确认网关允许浏览器访问，或通过同源代理转发。',
     )
-  } finally {
-    clearTimeout(timer)
   }
+  external?.removeEventListener('abort', cancel)
 
   const { data, text } = await readPayload(response)
 
@@ -421,6 +512,179 @@ async function chatCompletion(
     )
   }
   return content
+}
+
+function sseData(block: string): string {
+  return block
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trimStart())
+    .join('\n')
+}
+
+async function streamChatCompletion(
+  settings: Settings,
+  messages: LlmMessage[],
+  temperature: number,
+  options: CompletionOptions,
+  onDelta: StreamHandler,
+): Promise<string> {
+  const apiKey = settings.apiKey.trim()
+  if (!apiKey) {
+    throw new LlmError('尚未配置 API Key。')
+  }
+
+  const endpoint = streamEndpoint(settings)
+  const controller = new AbortController()
+  const timeout = options.timeoutMs ?? 90000
+  const timer = setTimeout(() => controller.abort(), timeout)
+  const external = options.signal
+  if (external?.aborted) {
+    clearTimeout(timer)
+    throw new LlmCancelledError()
+  }
+  const cancel = () => controller.abort()
+  external?.addEventListener('abort', cancel, { once: true })
+  const body = buildBody(settings, messages, temperature, options.maxTokens)
+  const headers = buildHeaders(settings.apiProtocol, apiKey)
+  headers.Accept = 'text/event-stream'
+
+  let response: Response
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(
+        settings.apiProtocol === 'gemini'
+          ? body
+          : { ...body, stream: true },
+      ),
+      signal: controller.signal,
+    })
+  } catch (caught) {
+    clearTimeout(timer)
+    external?.removeEventListener('abort', cancel)
+    if (external?.aborted) throw new LlmCancelledError()
+    if (
+      (caught instanceof DOMException && caught.name === 'AbortError') ||
+      (caught &&
+        typeof caught === 'object' &&
+        'name' in caught &&
+        (caught as { name?: string }).name === 'AbortError')
+    ) {
+      throw new LlmError(
+        `请求超时（${Math.round(timeout / 1000)} 秒），请检查网络或网关。`,
+      )
+    }
+    throw new LlmError(
+      '无法连接模型服务。请检查 Base URL、网络和 CORS，或通过同源代理转发。',
+    )
+  }
+
+  let full = ''
+  let received = false
+
+  const consume = (block: string) => {
+    const raw = sseData(block).trim()
+    if (!raw) return true
+    if (raw === '[DONE]') return false
+    let data: unknown
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      return true
+    }
+    const delta = streamDelta(settings.apiProtocol, data)
+    if (delta) {
+      received = true
+      full += delta
+      onDelta(full)
+    }
+    return true
+  }
+
+  try {
+    if (!response.ok) {
+      const { data, text } = await readPayload(response)
+      const rawDetail = errorDetail(data)
+      const htmlDetail =
+        !rawDetail && !data
+          ? text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+          : ''
+      throw httpError(
+        settings,
+        response.status,
+        truncate(rawDetail || htmlDetail),
+      )
+    }
+
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('text/event-stream') || !response.body) {
+      const text = await response.text()
+      if (text.trimStart().startsWith('data:')) {
+        for (const block of text.replace(/\r\n/g, '\n').split('\n\n')) {
+          if (!consume(block)) break
+        }
+      } else {
+        let data: unknown = null
+        try {
+          data = JSON.parse(text)
+        } catch {
+          // The payload below produces the user-facing error.
+        }
+        const content = extractContent(settings.apiProtocol, data).trim()
+        if (content) {
+          received = true
+          full = content
+          onDelta(full)
+        }
+      }
+    } else {
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let done = false
+      while (!done) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        buffer += decoder.decode(chunk.value, { stream: true })
+        buffer = buffer.replace(/\r\n/g, '\n')
+        let index = buffer.indexOf('\n\n')
+        while (index >= 0) {
+          const block = buffer.slice(0, index)
+          buffer = buffer.slice(index + 2)
+          if (!consume(block)) {
+            done = true
+            break
+          }
+          index = buffer.indexOf('\n\n')
+        }
+      }
+      buffer += decoder.decode()
+      if (!done && buffer.trim()) consume(buffer)
+    }
+
+    const content = full.trim()
+    if (!content) {
+      throw new LlmError(
+        `${PROTOCOL_LABEL[settings.apiProtocol]} 没有返回内容，请重试。`,
+      )
+    }
+    if (!received) onDelta(content)
+    return content
+  } catch (caught) {
+    if (caught instanceof LlmError) throw caught
+    if (external?.aborted) throw new LlmCancelledError()
+    if (controller.signal.aborted) {
+      throw new LlmError(
+        `流式回答超时（${Math.round(timeout / 1000)} 秒），请重试。`,
+      )
+    }
+    throw new LlmError('流式回答中断了，请检查网络后重试。')
+  } finally {
+    clearTimeout(timer)
+    external?.removeEventListener('abort', cancel)
+  }
 }
 
 function orientationLabel(card: DrawnCard): string {
@@ -486,12 +750,86 @@ export async function listModels(settings: Settings): Promise<string[]> {
   return models
 }
 
+const SUIT_GRAMMAR = [
+  { name: '权杖', element: '火', domain: '行动、欲望与推进' },
+  { name: '圣杯', element: '水', domain: '情感、关系与需要' },
+  { name: '宝剑', element: '风', domain: '思考、言语与冲突' },
+  { name: '星币', element: '土', domain: '现实、身体与资源' },
+]
+
+function spreadGrammar(cards: DrawnCard[]): string {
+  const majorCount = cards.filter((drawn) => drawn.card.id < 22).length
+  const reversedCount = cards.filter(
+    (drawn) => drawn.orientation === 'reversed',
+  ).length
+  const minorCards = cards.filter((drawn) => drawn.card.id >= 22)
+  const suitCounts = [0, 0, 0, 0]
+  const rankCounts = new Map<string, number>()
+  let courtCount = 0
+
+  minorCards.forEach((drawn) => {
+    const offset = drawn.card.id - 22
+    const suitIndex = Math.floor(offset / 14)
+    const rank = (offset % 14) + 1
+    if (suitIndex >= 0 && suitIndex < 4) suitCounts[suitIndex] += 1
+    if (rank >= 11) courtCount += 1
+    const key = drawn.card.roman || String(rank)
+    rankCounts.set(key, (rankCounts.get(key) ?? 0) + 1)
+  })
+
+  const notes: string[] = []
+  if (majorCount >= 2) {
+    notes.push('两张以上大阿卡纳，这次更接近阶段性的课题，而不是一件小事')
+  } else if (majorCount === 0) {
+    notes.push('三张都是小阿卡纳，落点更贴近日常处境')
+  } else {
+    notes.push('一张大阿卡纳与两张小阿卡纳，大的主题落在具体日常里')
+  }
+
+  const activeSuits = SUIT_GRAMMAR.map((suit, index) => ({
+    ...suit,
+    count: suitCounts[index],
+  })).filter((suit) => suit.count > 0)
+  if (activeSuits.length === 2) {
+    const top = activeSuits.sort((a, b) => b.count - a.count)
+    notes.push(
+      `花色集中在${top[0].name}与${top[1].name}；${top[0].domain}，和${top[1].domain}互相牵动`,
+    )
+  } else if (activeSuits.length === 1) {
+    notes.push(
+      `三张牌同属${activeSuits[0].name}，${activeSuits[0].domain}是这次的主线`,
+    )
+  } else if (activeSuits.length === 3) {
+    notes.push('三种花色并置，画面里同时有不同层面的力量')
+  }
+
+  if (reversedCount >= 2) {
+    notes.push(
+      `${reversedCount} 张逆位，能量更像向内收、受阻或被过度使用，不是简单的“坏”`,
+    )
+  } else if (reversedCount === 0) {
+    notes.push('三张都是正位，倾向更直接地显化在当下')
+  }
+
+  const repeatedRank = [...rankCounts.entries()].find(([, count]) => count >= 2)
+  if (repeatedRank) {
+    notes.push(
+      `数字 ${repeatedRank[0]} 出现 ${repeatedRank[1]} 次，同一课题可能在不同位置重复`,
+    )
+  }
+  if (courtCount >= 2) {
+    notes.push('两张宫廷牌，适合读成某种姿态或角色，而不是具体的人')
+  }
+
+  return `牌阵结构：${notes.join('；')}。先看牌与牌之间的呼应，再选一到两张作为证据，不要逐张解释。`
+}
+
 export function buildCardContext(cards: DrawnCard[]): string {
   const lines = cards.map((drawn, index) => {
     const position = POSITIONS[drawn.position]
     return `${index + 1}. ${position.label}（${position.hint}）：《${drawn.card.name}》${orientationLabel(drawn)}｜关键词：${cardKeywords(drawn).join('、')}｜牌义：${cardMeaning(drawn)}`
   })
-  return `本次三张牌：\n${lines.join('\n')}`
+  return `本次三张牌：\n${lines.join('\n')}\n${spreadGrammar(cards)}`
 }
 
 function buildOpeningPrompt(
@@ -500,22 +838,46 @@ function buildOpeningPrompt(
   querent?: string,
 ): string {
   return `${buildCardContext(cards)}
-${querent ? `\n这次牌阵是为「${querent}」展开的，请像面对这位问卜者一样说话。` : ''}
+${querent ? `
+这次牌阵是为「${querent}」展开的，请像面对这位问卜者一样说话；不要把牌读成对第三方的断言，只谈他们之间的动力和这位问卜者能观察到的部分。` : ''}
 用户此刻的问题：「${question}」
 
-请写这次开场：先用一两句话接住用户问出这个问题时的状态；再从三张牌里挑一到两个意象，贴着问题说，不要逐张报牌义，也不要把三张牌都解释一遍。不要给单一结论，可以同时留下两三种不完全一致的读法，让它们并排存在。语气像安静的朋友，不用模板，不用 Markdown。最后可以留一个开放问题，但不要为了提问而硬加。通常 250-450 字，不必压短。`
+请写这次开场。不要从逐张介绍三张牌开始，也不要把三张牌都写到。
+1. 先用一两句复述问题里最具体的矛盾，引用或改写用户的一两个词，让他听见你听见了哪句话。如果是“该不该”“要不要”，点出这个选择背后的代价或怕失去的东西，但不要替用户下判断。
+2. 以一到两张牌为主，写一个具体的画面、位置或正逆位细节，说明它为什么和这句话有关。第三张只有在确实改变结论时，用一句话带过；不要背牌义。
+3. 先给出一个你更相信的主读法，再给一个能拆台的反读法；主读法要解释“为什么是现在”，反读法要真的改变前面的结论，不能只是并列另一种可能。
+4. 最后只留一个问题或一个很小的观察邀请，不要同时给建议和问题。
+写成 2 到 4 个自然段，不用 Markdown，通常 350-580 字；不必为了完整而把话拉长。`
 }
-
 function buildReplyMessages(
   question: string,
   cards: DrawnCard[],
   history: ChatMessage[],
+  lens?: ReadingLens,
 ): LlmMessage[] {
+  const assistantText = history
+    .filter((message) => message.role === 'assistant')
+    .map((message) => message.content)
+    .join('\n')
+  const usedCards = cards
+    .filter((drawn) => assistantText.includes(drawn.card.name))
+    .map((drawn) => `《${drawn.card.name}》`)
+  const userTurns = history.filter((message) => message.role === 'user').length
+  const lengthRule =
+    userTurns <= 1 ? '200-420' : userTurns <= 3 ? '180-380' : '150-320'
   const context = `用户此刻的问题：「${question}」
 
 ${buildCardContext(cards)}
+${usedCards.length > 0 ? `上文已经重点用过的牌：${usedCards.join('、')}。本轮优先换一张牌，或换一个上文没有出现过的意象。` : ''}
 
-对话已进行到中段。不要重复开场，也不要逐张复述牌义。先回应用户最后一句，再给出一到两种可能的读法，让它们并存，不要急着收束成一个结论，也不要替用户断言他的感受。通常 150-350 字，可以稍长；如果要提问，只问一个开放问题，不要为了提问而硬加。不要使用 Markdown。`
+这是第 ${userTurns + 1} 轮回应。越往后越短，只推进一个新的点，不要复述已经说过的内容。请接着用户最后一句说，不要重复开场，也不要逐张复述牌义。
+${lens ? `本轮读法：${lensInstruction(lens)}` : ''}
+本轮要求：
+- 先回应用户最后一句里最具体的那个词，不要用泛泛的共情开场。
+- 以一到两张牌为主，写一个具体的画面、位置或正逆位细节；第三张只有在确实改变结论时，用一句话带过，不要三张平均分配，也不要背牌义。
+- 先给出一个上文没有出现过的新区分，并把它作为主读法；再给一个能拆台的反读法；最后留一个尚未决定的地方。不要把几种可能平均铺开。
+- 不要逐条给建议。最后只留一个问题或一个很小的观察邀请。
+- 写成 2 到 4 个自然段，不用 Markdown，通常 ${lengthRule} 字；不必为了长而重复。`
   return [
     { role: 'system', content: CHAT_SYSTEM_PROMPT },
     { role: 'user', content: context },
@@ -526,20 +888,35 @@ ${buildCardContext(cards)}
   ]
 }
 
+export interface ReadingRequestOptions {
+  onDelta?: StreamHandler
+  signal?: AbortSignal
+  lens?: ReadingLens
+}
+
 export function requestOpening(
   settings: Settings,
   question: string,
   cards: DrawnCard[],
   querent?: string,
+  options: ReadingRequestOptions = {},
 ): Promise<string> {
-  return chatCompletion(
-    settings,
-    [
-      { role: 'system', content: CHAT_SYSTEM_PROMPT },
-      { role: 'user', content: buildOpeningPrompt(question, cards, querent) },
-    ],
-    0.78,
-  )
+  const messages: LlmMessage[] = [
+    { role: 'system', content: CHAT_SYSTEM_PROMPT },
+    { role: 'user', content: buildOpeningPrompt(question, cards, querent) },
+  ]
+  return options.onDelta
+    ? streamChatCompletion(
+        settings,
+        messages,
+        0.78,
+        { signal: options.signal, maxTokens: 3000 },
+        options.onDelta,
+      )
+    : chatCompletion(settings, messages, 0.78, {
+        signal: options.signal,
+        maxTokens: 3000,
+      })
 }
 
 export function requestReply(
@@ -547,12 +924,21 @@ export function requestReply(
   question: string,
   cards: DrawnCard[],
   history: ChatMessage[],
+  options: ReadingRequestOptions = {},
 ): Promise<string> {
-  return chatCompletion(
-    settings,
-    buildReplyMessages(question, cards, history),
-    0.75,
-  )
+  const messages = buildReplyMessages(question, cards, history, options.lens)
+  return options.onDelta
+    ? streamChatCompletion(
+        settings,
+        messages,
+        0.75,
+        { signal: options.signal, maxTokens: 3000 },
+        options.onDelta,
+      )
+    : chatCompletion(settings, messages, 0.75, {
+        signal: options.signal,
+        maxTokens: 3000,
+      })
 }
 
 function parseInsight(raw: string): Insight {

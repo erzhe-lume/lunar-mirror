@@ -10,21 +10,21 @@ export interface ThemeOption {
 export const THEMES: ThemeOption[] = [
   {
     id: 'violet',
-    name: '镜夜',
-    tone: '暗紫 · 旧金',
-    description: '像一面被月光照亮的紫晶镜。',
+    name: '月蚀',
+    tone: '墨黑 · 银',
+    description: '像一枚被月蚀磨亮的银镜。',
   },
   {
     id: 'verdant',
-    name: '苔庭',
-    tone: '深绿 · 铜金',
-    description: '像走进一座没有尽头的苔藓庭院。',
+    name: '霜庭',
+    tone: '石墨 · 锡',
+    description: '像落霜后的石庭，冷而安静。',
   },
   {
     id: 'abyss',
-    name: '月潮',
-    tone: '深蓝 · 银金',
-    description: '像退潮后的深海与星图。',
+    name: '乌金',
+    tone: '烟褐 · 月白',
+    description: '像旧银器上残留的一点暖光。',
   },
 ]
 
@@ -37,9 +37,9 @@ export function isThemeId(value: unknown): value is ThemeId {
 export function applyTheme(theme: ThemeId): void {
   document.documentElement.dataset.theme = theme
   const colors: Record<ThemeId, string> = {
-    violet: '#07080f',
-    verdant: '#04100a',
-    abyss: '#030a12',
+    violet: '#07080a',
+    verdant: '#0a0b0a',
+    abyss: '#0b0a09',
   }
   document
     .querySelector('meta[name="theme-color"]')

@@ -110,9 +110,15 @@ try {
       'src/lib/crisis.ts',
       'src/data/safety-copy.ts',
       'src/data/tarot.ts',
+      'src/lib/storage.ts',
+      'src/lib/revisits.ts',
+      'src/lib/backup.ts',
+      'src/lib/reading.ts',
+      'src/lib/llm.ts',
     ],
     bundle: true,
     format: 'esm',
+    define: { 'import.meta.env': '{}' },
     outdir,
     outExtension: { '.js': '.mjs' },
     logLevel: 'silent',
@@ -123,6 +129,11 @@ try {
   const safety = await import(pathToFileURL(join(outdir, 'data', 'safety-copy.mjs')).href)
   const draw = await import(pathToFileURL(join(outdir, 'lib', 'draw.mjs')).href)
   const tarot = await import(pathToFileURL(join(outdir, 'data', 'tarot.mjs')).href)
+  const storage = await import(pathToFileURL(join(outdir, 'lib', 'storage.mjs')).href)
+  const revisits = await import(pathToFileURL(join(outdir, 'lib', 'revisits.mjs')).href)
+  const backup = await import(pathToFileURL(join(outdir, 'lib', 'backup.mjs')).href)
+  const reading = await import(pathToFileURL(join(outdir, 'lib', 'reading.mjs')).href)
+  const llm = await import(pathToFileURL(join(outdir, 'lib', 'llm.mjs')).href)
   const cards = (index) => {
     const ids = [[0, 17, 13], [2, 11, 7], [9, 15, 19]][index % 3]
     return ids.map((id, position) => ({
@@ -143,28 +154,48 @@ try {
       { role: 'user', content: '我最近确实一直在想这件事。', at: 2 },
     ]
     const reply = demo.demoReply(question, spread, history)
+    const lensReply = demo.demoReply(question, spread, history, 'inner')
     const insight = demo.demoInsight(question, spread, history)
     const suggestions = demo.demoSuggestions(question)
     const all = [opening, reply, JSON.stringify(insight)].join('\n')
     const theme = demo.classifyTheme(question)
-    const hasThreeVoices =
-      opening.includes('「处境」') &&
-      opening.includes('「盲点」') &&
-      opening.includes('「行动」')
+    const openingCardNames = spread.filter((card) =>
+      opening.includes(`《${card.card.name}》`),
+    ).length
 
     if (all.includes('undefined')) failures.push(`${question}：包含 undefined`)
     if (all.includes('。；')) failures.push(`${question}：出现“。；”拼接`)
     if (!opening.includes('你问的是「')) failures.push(`${question}：缺少问题引用`)
     if (!opening.includes('？')) failures.push(`${question}：开场没有提问`)
-    if (opening.split('\n\n').length < 5) {
-      failures.push(`${question}：开场段落过少，缺少多声部结构`)
+    const openingParagraphs = opening.split('\n\n').length
+    if (openingParagraphs < 3 || openingParagraphs > 4) {
+      failures.push(`${question}：开场应分成 3-4 段`)
     }
-    if (theme.key !== 'grief' && !hasThreeVoices) {
-      failures.push(`${question}：开场没有三种牌位声音`)
+    if (theme.key !== 'grief' && (openingCardNames < 1 || openingCardNames > 2)) {
+      failures.push(`${question}：开场应只取 1-2 张牌作证据`)
+    }
+    if (
+      theme.key !== 'grief' &&
+      !/(反过来看|另一面|反读一下)/.test(opening)
+    ) {
+      failures.push(`${question}：开场缺少反读法`)
     }
     if (!reply.includes('？')) failures.push(`${question}：回应没有提问`)
-    if (reply.split('\n\n').length < 4) {
-      failures.push(`${question}：回应缺少多角度结构`)
+    const replyParagraphs = reply.split('\n\n').length
+    if (replyParagraphs < 3 || replyParagraphs > 4) {
+      failures.push(`${question}：回应应分成 3-4 段`)
+    }
+    if (
+      theme.key !== 'grief' &&
+      !/(反过来看|另一面|反读一下)/.test(reply)
+    ) {
+      failures.push(`${question}：回应缺少反读法`)
+    }
+    if (
+      theme.key !== 'grief' &&
+      (lensReply === reply || !lensReply.includes('这次换一个角度'))
+    ) {
+      failures.push(`${question}：换一种读法没有生成新回答`)
     }
     if (reply.length < 80) failures.push(`${question}：回应内容过短`)
     if (!insight.title || !insight.mirror || !insight.invitation) {
@@ -292,6 +323,197 @@ try {
       failures.push(`危机追问「${crisisText}」：回访未进入安全引导`)
     }
   })
+
+  const safeEcho = safety.safetyRevisit(
+    'self',
+    '我今天又听见了那句话：「先照顾你自己」。',
+  )
+  if (!safeEcho.includes('你这次写道：我今天又听见了那句话：「先照顾你自己」。')) {
+    failures.push(`安全回访没有原样引用：${safeEcho}`)
+  }
+  if (safeEcho.includes('写到「')) {
+    failures.push('安全回访仍用外层引号包裹回答')
+  }
+
+  const store = new Map()
+  let rejectImages = true
+  globalThis.localStorage = {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => {
+      if (rejectImages && String(value).includes('data:image')) {
+        throw new DOMException('quota exceeded', 'QuotaExceededError')
+      }
+      store.set(key, String(value))
+    },
+    removeItem: (key) => {
+      store.delete(key)
+    },
+    clear: () => store.clear(),
+    key: (index) => [...store.keys()][index] ?? null,
+    get length() {
+      return store.size
+    },
+  }
+  const snapshotPayload = {
+    question: '存储降级测试',
+    cards: cards(0),
+    messages: [],
+    input: '',
+    phase: 'insight',
+    insight: null,
+    savedEntry: {
+      id: 'storage-fallback',
+      snapshot: 'data:image/png;base64,AAAA',
+    },
+  }
+  storage.saveReadingSnapshot(snapshotPayload)
+  const fallbackRaw = localStorage.getItem('lunar-mirror.reading')
+  if (!fallbackRaw) {
+    failures.push('图片超出配额后没有写入纯文本快照')
+  } else {
+    const fallback = JSON.parse(fallbackRaw)
+    if (!fallback.savedEntry || fallback.savedEntry.id !== 'storage-fallback') {
+      failures.push('纯文本快照丢失了记录主体')
+    }
+    if (fallback.savedEntry.snapshot !== undefined) {
+      failures.push('纯文本快照仍包含 dataURL')
+    }
+    if (fallback.question !== '存储降级测试' || fallback.version !== 1) {
+      failures.push('纯文本快照字段不完整')
+    }
+  }
+  rejectImages = false
+  storage.saveReadingSnapshot(snapshotPayload)
+  const fullRaw = localStorage.getItem('lunar-mirror.reading')
+  const full = fullRaw ? JSON.parse(fullRaw) : null
+  if (!full || full.savedEntry?.snapshot !== 'data:image/png;base64,AAAA') {
+    failures.push('配额充足时图片快照没有保留')
+  }
+
+  const now = Date.now()
+  const revisitEntry = (id, days, crisis = false, lastRevisitDays = null) => ({
+    id,
+    createdAt: now - days * 86400000,
+    question: `${id} 的问题`,
+    cards: cards(0),
+    messages: [],
+    insight: {
+      title: id,
+      mirror: '',
+      pattern: '',
+      invitation: '',
+      keywords: [],
+      crisis,
+    },
+    revisits:
+      lastRevisitDays === null
+        ? []
+        : [{ at: now - lastRevisitDays * 86400000, answer: '回访', note: '备注' }],
+  })
+  const due = revisits.dueRevisits(
+    [
+      revisitEntry('due-8', 8),
+      revisitEntry('due-35', 35),
+      revisitEntry('not-yet', 6),
+      revisitEntry('crisis', 40, true),
+      revisitEntry('revisited', 20, false, 2),
+    ],
+    now,
+  )
+  if (due.length !== 2 || due[0].entry.id !== 'due-35') {
+    failures.push(`回访提醒排序或过滤不正确：${due.map((item) => item.entry.id).join(',')}`)
+  }
+  if (due.some((item) => item.entry.id === 'crisis')) {
+    failures.push('危机记录不应进入回访提醒')
+  }
+  if (due[0]?.days !== 35 || due[0]?.level !== 'long') {
+    failures.push('30 天以上的回访提醒没有标记为久放')
+  }
+
+  const backupEntry = {
+    id: 'backup-valid',
+    createdAt: now - 3 * 86400000,
+    question: '备份恢复测试',
+    cards: cards(0),
+    messages: [{ role: 'assistant', content: '一段回应', at: now }],
+    insight: {
+      title: '备份里的镜子',
+      mirror: '也许这只是一次测试。',
+      pattern: '反复检查边界。',
+      invitation: '先恢复一条记录。',
+      keywords: ['备份', '恢复'],
+      crisis: true,
+    },
+    revisits: [{ at: now - 86400000, answer: '回访内容', note: '回访回应' }],
+  }
+  const parsedBackup = backup.parseBackup(JSON.stringify([backupEntry]))
+  if (
+    parsedBackup.entries.length !== 1 ||
+    parsedBackup.entries[0].insight.crisis !== true ||
+    parsedBackup.entries[0].revisits?.[0].answer !== '回访内容'
+  ) {
+    failures.push('备份解析没有保留危机标记或回访')
+  }
+  const mixedBackup = backup.parseBackup(
+    JSON.stringify({
+      entries: [
+        backupEntry,
+        { id: 'broken-entry' },
+        { ...backupEntry, snapshot: `data:image/png;base64,${'A'.repeat(2100000)}` },
+      ],
+    }),
+  )
+  if (mixedBackup.entries.length !== 1 || mixedBackup.skipped !== 2) {
+    failures.push('备份解析没有跳过损坏记录或重复 id')
+  }
+  if (
+    mixedBackup.snapshotsDropped !== 1 ||
+    mixedBackup.entries[0].snapshot !== undefined
+  ) {
+    failures.push('备份解析没有丢弃超大快照')
+  }
+  let invalidRejected = false
+  try {
+    backup.parseBackup('{ not json }')
+  } catch {
+    invalidRejected = true
+  }
+  if (!invalidRejected) failures.push('无效备份没有被拒绝')
+
+  const longReading =
+    '这句话先不急着解释。它可能同时装着两层意思。也许你怕的不是选择本身，而是选择之后要承担的想象。也可以反过来看，这份犹豫在保护你。牌面里的画面像一扇半开的门。先看看门后有什么。'
+  const shapedReply = reading.shapeReading(longReading.repeat(4), 'reply')
+  const shapedOpening = reading.shapeReading(longReading.repeat(6), 'opening')
+  if (shapedReply.split('\n\n').length < 2) {
+    failures.push('长段回答没有被分成多段')
+  }
+  if (shapedOpening.split('\n\n').length !== 3) {
+    failures.push('长开场没有被分成三段')
+  }
+  if (shapedReply.replace(/\n/g, '') !== longReading.repeat(4)) {
+    failures.push('自动分段改动了原文')
+  }
+  const alreadyShaped = '第一段。\n\n第二段。'
+  if (reading.shapeReading(alreadyShaped, 'reply') !== alreadyShaped) {
+    failures.push('已有分段的回答被重复改写')
+  }
+  if (reading.shapeReading('短句。', 'reply') !== '短句。') {
+    failures.push('短回答被错误分段')
+  }
+  const manyParagraphs = ['一。', '二。', '三。', '四。', '五。', '六。'].join(
+    '\n\n',
+  )
+  if (reading.shapeReading(manyParagraphs, 'opening') !== manyParagraphs) {
+    failures.push('已有分段超过四段时被截断')
+  }
+
+  const spreadContext = llm.buildCardContext(cards(0))
+  if (
+    !spreadContext.includes('牌阵结构：') ||
+    spreadContext.includes('undefined')
+  ) {
+    failures.push('牌阵结构上下文缺失或包含 undefined')
+  }
 
   if (tarot.ALL_CARDS.length !== 78) {
     failures.push(`牌库应为 78 张，当前 ${tarot.ALL_CARDS.length} 张`)

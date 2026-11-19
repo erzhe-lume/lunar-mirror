@@ -8,13 +8,26 @@ import type {
 } from '../types'
 import { POSITIONS } from '../types'
 import {
+  classifyTheme,
   demoInsight,
   demoOpening,
   demoReply,
   demoSuggestions,
 } from '../lib/demo'
-import { isCrisisText } from '../lib/crisis'
-import { requestInsight, requestOpening, requestReply } from '../lib/llm'
+import {
+  detectSafetyConcern,
+  isCrisisText,
+  type SafetyKind,
+} from '../lib/crisis'
+import { SAFETY_COPY } from '../data/safety-copy'
+import {
+  LlmCancelledError,
+  requestInsight,
+  requestOpening,
+  requestReply,
+} from '../lib/llm'
+import { READING_LENSES, type ReadingLens } from '../lib/lenses'
+import { shapeReading } from '../lib/reading'
 import { playInsight } from '../lib/sound'
 import { speak, stopSpeaking } from '../lib/speech'
 import {
@@ -38,7 +51,7 @@ interface Props {
 
 type Pending =
   | { kind: 'opening' }
-  | { kind: 'reply'; history: ChatMessage[] }
+  | { kind: 'reply'; history: ChatMessage[]; lens?: ReadingLens }
   | { kind: 'insight' }
 
 const pause = (ms: number) =>
@@ -64,6 +77,7 @@ export default function ReadingView({
   )
   const [input, setInput] = useState(() => restored?.input ?? '')
   const [busy, setBusy] = useState(false)
+  const [streaming, setStreaming] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [phase, setPhase] = useState<'chat' | 'insight'>(
@@ -79,6 +93,7 @@ export default function ReadingView({
   const [offlineMode, setOfflineMode] = useState(
     !settings.apiKey.trim() || settings.offline,
   )
+  const [showJump, setShowJump] = useState(false)
 
   const pendingRef = useRef<Pending | null>(null)
   const startedRef = useRef(false)
@@ -87,6 +102,8 @@ export default function ReadingView({
   const ttsRef = useRef(settings.voiceEnabled)
   const offlineRef = useRef(!settings.apiKey.trim() || settings.offline)
   const busyRef = useRef(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const atBottomRef = useRef(true)
 
   const setBusyState = (value: boolean) => {
     busyRef.current = value
@@ -109,20 +126,27 @@ export default function ReadingView({
   }, [settings.apiKey, settings.offline])
 
   useEffect(() => {
-    return () => stopSpeaking()
+    return () => {
+      abortRef.current?.abort()
+      stopSpeaking()
+    }
   }, [])
 
   useEffect(() => {
-    saveReadingSnapshot({
-      question,
-      cards,
-      messages,
-      input,
-      phase,
-      insight,
-      savedEntry,
-    })
-  }, [question, cards, messages, input, phase, insight, savedEntry])
+    if (busy) return
+    const timer = window.setTimeout(() => {
+      saveReadingSnapshot({
+        question,
+        cards,
+        messages,
+        input,
+        phase,
+        insight,
+        savedEntry,
+      })
+    }, 120)
+    return () => window.clearTimeout(timer)
+  }, [question, cards, messages, input, phase, insight, savedEntry, busy])
 
   useEffect(() => {
     if (restoredSavedRef.current) return
@@ -140,7 +164,7 @@ export default function ReadingView({
       node.scrollTop = 0
       return
     }
-    node.scrollTop = node.scrollHeight
+    if (atBottomRef.current) node.scrollTop = node.scrollHeight
   }, [messages, busy, error])
 
   useEffect(() => {
@@ -174,26 +198,141 @@ export default function ReadingView({
     if (ttsRef.current) speak(content, settings.voiceURI)
   }
 
+  const handleChatScroll = () => {
+    const node = scrollRef.current
+    if (!node) return
+    const atBottom =
+      node.scrollHeight - node.scrollTop - node.clientHeight < 72
+    atBottomRef.current = atBottom
+    setShowJump(!atBottom)
+  }
+
+  const jumpToLatest = () => {
+    const node = scrollRef.current
+    if (!node) return
+    atBottomRef.current = true
+    setShowJump(false)
+    node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' })
+  }
+
+  const beginStream = () => {
+    const at = Date.now()
+    let inserted = false
+    let latest = ''
+    let frame = 0
+
+    const paint = () => {
+      frame = 0
+      setMessages((previous) =>
+        previous.map((message, index) =>
+          index === previous.length - 1 && message.at === at
+            ? { ...message, content: latest }
+            : message,
+        ),
+      )
+    }
+
+    return {
+      onDelta: (full: string) => {
+        latest = full
+        if (!inserted) {
+          inserted = true
+          setStreaming(true)
+          setMessages((previous) => [
+            ...previous,
+            { role: 'assistant', content: latest, at },
+          ])
+          return
+        }
+        if (!frame) frame = window.requestAnimationFrame(paint)
+      },
+      finish: (full: string) => {
+        if (frame) window.cancelAnimationFrame(frame)
+        setStreaming(false)
+        if (!inserted) {
+          appendAssistant(full)
+          return
+        }
+        setMessages((previous) =>
+          previous.map((message, index) =>
+            index === previous.length - 1 && message.at === at
+              ? { ...message, content: full }
+              : message,
+          ),
+        )
+        if (ttsRef.current) speak(full, settings.voiceURI)
+      },
+      cancel: () => {
+        if (frame) window.cancelAnimationFrame(frame)
+        setStreaming(false)
+        if (inserted) {
+          setMessages((previous) =>
+            previous.filter(
+              (message) =>
+                !(message.at === at && message.role === 'assistant'),
+            ),
+          )
+        }
+      },
+      stop: () => {
+        if (frame) window.cancelAnimationFrame(frame)
+        setStreaming(false)
+        if (!inserted) return
+        const final = latest.trim()
+        if (!final) {
+          setMessages((previous) =>
+            previous.filter(
+              (message) =>
+                !(message.at === at && message.role === 'assistant'),
+            ),
+          )
+          return
+        }
+        const content = /[。！？!?…]$/.test(final) ? final : `${final}……`
+        setMessages((previous) =>
+          previous.map((message, index) =>
+            index === previous.length - 1 && message.at === at
+              ? { ...message, content }
+              : message,
+          ),
+        )
+      },
+    }
+  }
+
   const runOpening = async () => {
     if (cards.length === 0 || busyRef.current) return
     setBusyState(true)
     setError('')
     pendingRef.current = { kind: 'opening' }
+    const controller = new AbortController()
+    abortRef.current = controller
+    const stream = beginStream()
     try {
       let content: string
       if (isCrisisText(question)) {
         content = demoOpening(question, cards, querent)
       } else if (!isLocal()) {
-        content = await requestOpening(settings, question, cards, querent)
+        content = await requestOpening(settings, question, cards, querent, {
+          onDelta: stream.onDelta,
+          signal: controller.signal,
+        })
       } else {
         await pause(700)
         content = demoOpening(question, cards, querent)
       }
-      appendAssistant(content)
+      stream.finish(shapeReading(content, 'opening'))
       pendingRef.current = null
     } catch (caught) {
-      setError(errorMessage(caught))
+      if (caught instanceof LlmCancelledError) {
+        stream.stop()
+        pendingRef.current = null
+      } else {
+        stream.cancel()
+        setError(errorMessage(caught))
+      }
     } finally {
+      if (abortRef.current === controller) abortRef.current = null
       setBusyState(false)
     }
   }
@@ -206,29 +345,43 @@ export default function ReadingView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const runReply = async (history: ChatMessage[]) => {
+  const runReply = async (history: ChatMessage[], lens?: ReadingLens) => {
     if (busyRef.current) return
     setBusyState(true)
     setError('')
-    pendingRef.current = { kind: 'reply', history }
+    pendingRef.current = { kind: 'reply', history, lens }
+    const controller = new AbortController()
+    abortRef.current = controller
+    const stream = beginStream()
     try {
       let content: string
       const conversationCrisis = history.some(
         (message) => message.role === 'user' && isCrisisText(message.content),
       )
       if (conversationCrisis) {
-        content = demoReply(question, cards, history)
+        content = demoReply(question, cards, history, lens)
       } else if (!isLocal()) {
-        content = await requestReply(settings, question, cards, history)
+        content = await requestReply(settings, question, cards, history, {
+          onDelta: stream.onDelta,
+          signal: controller.signal,
+          lens,
+        })
       } else {
         await pause(650)
-        content = demoReply(question, cards, history)
+        content = demoReply(question, cards, history, lens)
       }
-      appendAssistant(content)
+      stream.finish(shapeReading(content, 'reply'))
       pendingRef.current = null
     } catch (caught) {
-      setError(errorMessage(caught))
+      if (caught instanceof LlmCancelledError) {
+        stream.stop()
+        pendingRef.current = null
+      } else {
+        stream.cancel()
+        setError(errorMessage(caught))
+      }
     } finally {
+      if (abortRef.current === controller) abortRef.current = null
       setBusyState(false)
     }
   }
@@ -244,12 +397,24 @@ export default function ReadingView({
     const next = [...messages, userMessage]
     setMessages(next)
     setInput('')
+    atBottomRef.current = true
+    setShowJump(false)
+    saveReadingSnapshot({
+      question,
+      cards,
+      messages: next,
+      input: '',
+      phase,
+      insight,
+      savedEntry,
+    })
     void runReply(next)
   }
 
   const send = () => sendText(input)
   const userTurns = messages.filter((message) => message.role === 'user').length
   const suggestions = demoSuggestions(question)
+  const isGriefReading = classifyTheme(question).key === 'grief'
 
   const finish = async () => {
     if (
@@ -302,12 +467,27 @@ export default function ReadingView({
     }
   }
 
+  const changeReading = (lens: ReadingLens) => {
+    if (busyRef.current || phase !== 'chat') return
+    const last = messages[messages.length - 1]
+    if (!last || last.role !== 'assistant') return
+    const base = messages.slice(0, -1)
+    if (!base.some((message) => message.role === 'user')) return
+    setMessages(base)
+    void runReply(base, lens)
+  }
+
+  const stopGenerating = () => {
+    abortRef.current?.abort()
+  }
+
   const retry = () => {
     const pending = pendingRef.current
     if (!pending || busyRef.current) return
     if (pending.kind === 'opening') void runOpening()
-    else if (pending.kind === 'reply') void runReply(pending.history)
-    else void finish()
+    else if (pending.kind === 'reply') {
+      void runReply(pending.history, pending.lens)
+    } else void finish()
   }
 
   const fallbackOffline = () => {
@@ -318,7 +498,16 @@ export default function ReadingView({
     retry()
   }
 
+  const crisisKind =
+    detectSafetyConcern(question) ??
+    messages
+      .filter((message) => message.role === 'user')
+      .map((message) => detectSafetyConcern(message.content))
+      .find((kind): kind is SafetyKind => Boolean(kind)) ??
+    null
+  const safetyContent = crisisKind ? SAFETY_COPY[crisisKind] : null
   const crisisInChat =
+    Boolean(crisisKind) ||
     isCrisisText(question) ||
     messages.some(
       (message) => message.role === 'user' && isCrisisText(message.content),
@@ -360,12 +549,14 @@ export default function ReadingView({
                     className="spread-fan-float"
                     style={{ animationDelay: `${index * 0.8}s` }}
                   >
-                    <TarotCard
-                      card={drawn.card}
-                      orientation={drawn.orientation}
-                      faceUp
-                      size="sm"
-                    />
+                    <span className="spread-fan-deal">
+                      <TarotCard
+                        card={drawn.card}
+                        orientation={drawn.orientation}
+                        faceUp
+                        size="sm"
+                      />
+                    </span>
                   </div>
                 </div>
               ))}
@@ -451,15 +642,23 @@ export default function ReadingView({
 
             {crisisInChat && (
               <div className="chat-safety-banner" role="alert">
-                <strong>安全优先</strong>
+                <strong>{safetyContent?.title ?? '安全优先'}</strong>
                 <span className="chat-safety-copy">
-                  接下来不做牌面解读。请优先保护自己和他人的安全，联系现实中的帮助。
+                  {safetyContent?.lead ??
+                    '接下来不做牌面解读。请优先保护自己和他人的安全，联系现实中的帮助。'}
                 </span>
                 <span className="chat-safety-calls">
                   <a href="tel:110">110 报警</a>
                   <a href="tel:120">120 急救</a>
                   <a href="tel:12356">12356 心理援助</a>
                 </span>
+                <button
+                  type="button"
+                  className="ghost-btn small chat-safety-home"
+                  onClick={onHome}
+                >
+                  返回首页
+                </button>
               </div>
             )}
 
@@ -470,6 +669,7 @@ export default function ReadingView({
               aria-live="polite"
               aria-relevant="additions"
               aria-label="月鉴的回应"
+              onScroll={handleChatScroll}
             >
               {messages.length === 0 && busy && (
                 <div className="chat-empty">
@@ -486,7 +686,15 @@ export default function ReadingView({
                       <SealMark />
                     </span>
                   )}
-                  <div className={`bubble ${message.role === 'user' ? 'bubble-user' : 'bubble-mirror'}`}>
+                  <div
+                    className={`bubble ${message.role === 'user' ? 'bubble-user' : 'bubble-mirror'} ${
+                      streaming &&
+                      message.role === 'assistant' &&
+                      index === messages.length - 1
+                        ? 'is-streaming'
+                        : ''
+                    }`}
+                  >
                     {message.role === 'assistant' && (
                       <i className="bubble-veil" aria-hidden="true" />
                     )}
@@ -496,7 +704,7 @@ export default function ReadingView({
                   </div>
                 </div>
               ))}
-              {busy && !generating && (
+              {busy && !generating && !streaming && (
                 <div className="bubble-row is-mirror" aria-hidden="true">
                   <span className="bubble-avatar" aria-hidden="true">
                     <SealMark />
@@ -509,6 +717,26 @@ export default function ReadingView({
                   </div>
                 </div>
               )}
+              {!busy &&
+                !generating &&
+                !isGriefReading &&
+                messages.length > 1 &&
+                messages[messages.length - 1]?.role === 'assistant' &&
+                messages.some((message) => message.role === 'user') && (
+                  <div className="reading-lenses" aria-label="换一种读法">
+                    <span className="reading-lenses-label">换一种读法</span>
+                    {READING_LENSES.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className="reading-lens-btn"
+                        onClick={() => changeReading(option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               {error && phase === 'chat' && (
                 <div className="error-banner" role="alert">
                   <p>{error}</p>
@@ -580,14 +808,33 @@ export default function ReadingView({
                 disabled={busy}
               />
               <div className="chat-input-actions">
-                <button
-                  type="button"
-                  className="send-btn"
-                  onClick={send}
-                  disabled={!input.trim() || busy}
-                >
-                  发送
-                </button>
+                {showJump && (
+                  <button
+                    type="button"
+                    className="ghost-btn small chat-jump-btn"
+                    onClick={jumpToLatest}
+                  >
+                    ↓ 最新
+                  </button>
+                )}
+                {busy && !generating && streaming && !offlineLabel ? (
+                  <button
+                    type="button"
+                    className="ghost-btn small chat-stop-btn"
+                    onClick={stopGenerating}
+                  >
+                    停止生成
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="send-btn"
+                    onClick={send}
+                    disabled={!input.trim() || busy}
+                  >
+                    发送
+                  </button>
+                )}
               </div>
             </div>
 

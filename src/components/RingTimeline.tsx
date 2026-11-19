@@ -146,11 +146,9 @@ export default function RingTimeline({
                   <button
                     type="button"
                     className={`thread-charm ${selected ? 'is-selected' : ''}`}
-                    onClick={() =>
-                      selected ? onOpen(entry) : onPreview(entry.id)
-                    }
+                    onClick={() => onPreview(entry.id)}
                     aria-pressed={selected}
-                    aria-label={`${formatDate(entry.createdAt)}：${entry.question}`}
+                    aria-label={`预览 ${formatDate(entry.createdAt)}：${entry.question}`}
                   >
                     <span className="charm-star" aria-hidden="true">✦</span>
                     <span className="charm-date">
@@ -206,7 +204,7 @@ export default function RingTimeline({
         </div>
       )}
 
-      <p className="ring-hint">轻点星卡，展开这一次照见；再点进入记录</p>
+      <p className="ring-hint">轻点星卡切换预览，点开中央牌阵进入记录</p>
     </div>
   )
 }

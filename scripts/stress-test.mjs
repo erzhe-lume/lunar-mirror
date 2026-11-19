@@ -97,14 +97,14 @@ const FORMS = [
   (topic, concern) => `${topic}${concern}，我该不该继续？`,
   (topic, concern) => `为什么${topic}总是${concern}？`,
   (topic, concern) => `如果${topic}继续${concern}，我该怎么选？`,
-  (topic, concern) => `我该不该为了${topic}做一个决定？`,
+  (topic, _concern) => `我该不该为了${topic}做一个决定？`,
   (topic, concern) => `${topic}${concern}，我还要不要坚持？`,
   (topic, concern) => `我想改变${topic}，但${concern}，怎么办？`,
-  (topic, concern) => `${topic}让我看不到方向，我还能做什么？`,
+  (topic, _concern) => `${topic}让我看不到方向，我还能做什么？`,
   (topic, concern) => `我总是因为${topic}${concern}，这次会不一样吗？`,
   (topic, concern) => `关于${topic}，${concern}，我想听听不同的看法。`,
   (topic, concern) => `我不知道${topic}会不会一直${concern}。`,
-  (topic, concern) => `${topic}让我想逃开，我该留下还是离开？`,
+  (topic, _concern) => `${topic}让我想逃开，我该留下还是离开？`,
 ]
 
 const PREFIXES = ['', '', '', '最近，', '这半年，', '有时候我觉得，']

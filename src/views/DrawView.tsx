@@ -96,7 +96,7 @@ export default function DrawView({
     ).matches
     node.scrollIntoView({
       behavior: reduce ? 'auto' : 'smooth',
-      block: 'center',
+      block: 'nearest',
     })
   }, [stage])
 

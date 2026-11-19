@@ -8,7 +8,6 @@ import type {
 import {
   EXTRA_AUTHORITY_LINES,
   EXTRA_COUNTER_VOICES,
-  EXTRA_DECENTRALIZED_OPENERS,
   EXTRA_ECHO_OPENERS,
   EXTRA_GENERIC_SUGGESTIONS,
   EXTRA_INSIGHT_COUNTERS,
@@ -17,6 +16,7 @@ import {
   THEME_CORPUS,
 } from '../data/reflection-corpus'
 import { detectSafetyConcern, type SafetyKind } from './crisis'
+import { READING_LENSES, type ReadingLens } from './lenses'
 import {
   safetyInsight,
   safetyOpening,
@@ -748,19 +748,6 @@ const FRAME_PROMPTS: Record<FrameKey, string[]> = {
   ],
 }
 
-const DECENTRALIZED_OPENERS = [
-  '这组牌没有一个中心答案，它们更像三面各自说话的镜子。',
-  '这次牌阵不负责给出结论，只把几种同时存在的声音放到你面前。',
-  '牌面没有站在高处替你裁决，它只是把几种可能的真实摊开。',
-  '同一件事可以同时有好几种读法，你不需要只留下一个。',
-  '这不是一条来自中心的启示，更像三个独立视角的回声。',
-  '牌面不打算给你一个中心结论，它更想把几种真实并排放在你面前。',
-  '这不是一份判决书，而是三种可能同时成立时的回声。',
-  '没有任何一张牌能代表全部的你，它们只各自照亮一部分。',
-  '你可以把这三句话当成三个陌生人的视角，听完再决定留下什么。',
-  ...EXTRA_DECENTRALIZED_OPENERS,
-]
-
 const COUNTER_VOICES = [
   '也可以反过来看：其中一张牌说的不是问题，而是你已经在做的努力。',
   '还有另一种可能：这不是要你马上改变，而是提醒你看见自己已经承受了什么。',
@@ -785,25 +772,10 @@ const AUTHORITY_LINES = [
   ...EXTRA_AUTHORITY_LINES,
 ]
 
-const POSITION_LEADS: Record<DrawnCard['position'], string[]> = {
-  situation: [
-    '「处境」这面镜子照见：',
-    '先看「处境」：',
-    '「处境」的声音是：',
-    '「处境」这一面先说话：',
-  ],
-  blindspot: [
-    '「盲点」补了一句：',
-    '另一面「盲点」说得更直接：',
-    '「盲点」的声音不太一样：',
-    '「盲点」这面镜子提醒：',
-  ],
-  action: [
-    '「行动」没有替你决定，它只是说：',
-    '最后，「行动」把话头交回给你：',
-    '「行动」这面镜子更轻一点：',
-    '「行动」不催你，它只留下：',
-  ],
+const DEMO_POSITION_LABELS: Record<DrawnCard['position'], string> = {
+  situation: '处境',
+  blindspot: '盲点',
+  action: '行动',
 }
 
 const ECHO_OPENERS: ((quote: string) => string)[] = [
@@ -901,6 +873,22 @@ function seedOf(...parts: (string | number)[]): number {
 function choose<T>(items: T[], seed: number, offset = 0): T {
   const index = (seed + Math.imul(offset, 31)) >>> 0
   return items[index % items.length]
+}
+
+function chooseFresh<T>(
+  items: T[],
+  seed: number,
+  offset: number,
+  recent: string,
+): T {
+  const normalizedRecent = recent.replace(/\s+/g, '')
+  const index = (seed + Math.imul(offset, 31)) >>> 0
+  for (let step = 0; step < items.length; step += 1) {
+    const item = items[(index + step) % items.length]
+    const key = String(item).replace(/\s+/g, '')
+    if (!normalizedRecent.includes(key)) return item
+  }
+  return choose(items, seed, offset)
 }
 
 const FOCUS_PREFIX =
@@ -1153,6 +1141,45 @@ function uniqueKeywords(cards: DrawnCard[]): string[] {
   return [...new Set(cards.flatMap(keywordsOf))]
 }
 
+const DEMO_SUITS = [
+  { name: '权杖', domain: '行动与欲望' },
+  { name: '圣杯', domain: '情感与关系' },
+  { name: '宝剑', domain: '思考与言语' },
+  { name: '星币', domain: '现实与资源' },
+]
+
+function demoSpreadLine(cards: DrawnCard[]): string {
+  const majorCount = cards.filter((card) => card.card.id < 22).length
+  const reversedCount = cards.filter(
+    (card) => card.orientation === 'reversed',
+  ).length
+  const suitCounts = [0, 0, 0, 0]
+  cards
+    .filter((card) => card.card.id >= 22)
+    .forEach((card) => {
+      const suitIndex = Math.floor((card.card.id - 22) / 14)
+      if (suitIndex >= 0 && suitIndex < 4) suitCounts[suitIndex] += 1
+    })
+  const notes: string[] = []
+  notes.push(
+    majorCount >= 2
+      ? '两张以上大阿卡纳，这次更接近阶段性的课题'
+      : majorCount === 0
+        ? '三张都是小阿卡纳，落点更贴近日常'
+        : '一张大阿卡纳落在具体日常里',
+  )
+  if (reversedCount >= 2) {
+    notes.push(`${reversedCount} 张逆位，能量更像向内收或被过度使用`)
+  }
+  const concentrated = suitCounts.findIndex((count) => count >= 2)
+  if (concentrated >= 0) {
+    notes.push(
+      `${suitCounts[concentrated]} 张${DEMO_SUITS[concentrated].name}，${DEMO_SUITS[concentrated].domain}是这次的主线`,
+    )
+  }
+  return `牌阵结构上，${notes.join('；')}。`
+}
+
 export function demoOpening(
   question: string,
   cards: DrawnCard[],
@@ -1163,7 +1190,7 @@ export function demoOpening(
   if (isTaskRequest(question)) return TASK_OPENING
 
   const { theme, tone, frame } = analyzeQuestion(question)
-  const [situation, blindspot, action] = cards
+  const [situation] = cards
   const caution = cautionFor(question, theme.key)
   const seed = seedBase(question, cards)
   const focus = extractFocus(question)
@@ -1173,55 +1200,62 @@ export function demoOpening(
     ? `你问的是「${focus}」，同时也提到了「${secondary}」。`
     : `你问的是「${focus}」。`
   const intro = `${whoLine}${tone ? tone.line : ''}${questionLine}${frame.line}`
-  const authority = choose(AUTHORITY_LINES, seed, 6)
-  const isGrief = theme.key === 'grief'
-  const promptPool = isGrief
-    ? [
-        ...theme.prompts,
-        ...THEME_EXTRAS.grief.prompts,
-        ...THEME_CORPUS.grief.prompts,
-        ...FRAME_PROMPTS[frame.key],
-        ...STAGE_PROMPTS,
-      ]
-    : [
-        ...theme.prompts,
-        ...THEME_EXTRAS[theme.key].prompts,
-        ...THEME_CORPUS[theme.key].prompts,
-        ...FRAME_PROMPTS[frame.key],
-        ...cards.flatMap((card) => [...card.card.prompts]),
-        ...STAGE_PROMPTS,
-      ]
+  const promptPool = [
+    ...theme.prompts,
+    ...THEME_EXTRAS[theme.key].prompts,
+    ...THEME_CORPUS[theme.key].prompts,
+    ...FRAME_PROMPTS[frame.key],
+    ...cards.flatMap((card) => [...card.card.prompts]),
+    ...STAGE_PROMPTS,
+  ].filter(Boolean)
   const prompt = choose([...new Set(promptPool)], seed, 7)
+  const lens = themeLens(theme, seed)
 
-  if (isGrief) {
+  if (theme.key === 'grief') {
     const griefLine = choose(GRIEF_METAS, seed, 2)
     return [
-      intro,
-      themeLens(theme, seed),
-      griefLine,
-      `牌面不急着解释对错。它只是把「${keywordsOf(situation)[0]}」「${keywordsOf(blindspot)[0]}」「${keywordsOf(action)[0]}」放在一起，陪你看见这份想念的形状。`,
-      authority,
-      prompt,
+      `${intro}${lens}`,
+      `《${situation.card.name}》${orientationLabel(situation)}让我想到：${shortMeaning(situation, 56)}。${griefLine}`,
+      `${choose(AUTHORITY_LINES, seed, 6)}${asPrompt(prompt)}`,
     ].join('\n\n')
   }
 
-  const lens = themeLens(theme, seed)
-  const meta = choose(DECENTRALIZED_OPENERS, seed, 1)
-  const counter = choose(COUNTER_VOICES, seed, 8)
-  const voices = cards.map((card, index) => {
-    const lead = choose(POSITION_LEADS[card.position], seed, index + 2)
-    return `${lead}《${card.card.name}》${orientationLabel(card)}在说：${meaningOf(card)}`
-  })
+  const [mainCard, counterCard] =
+    seed % 2 === 0 ? [cards[0], cards[1]] : [cards[0], cards[2]]
+  const mainTemplates = [
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `我更倾向从「${position}」的《${card}》${orientation}读起：这可能是说，${meaning}。`,
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `这次我更愿意相信「${position}」的《${card}》${orientation}：它也许在说，${meaning}。`,
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `如果先只信一面，我会看「${position}」的《${card}》${orientation}：这可能是在提醒，${meaning}。`,
+  ]
+  const counterTemplates = [
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `但如果反过来看，「${position}」的《${card}》${orientation}提醒：这也许是在说，${meaning}。`,
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `另一面也得算进来：「${position}」的《${card}》${orientation}也可能是在说，${meaning}。`,
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `反读一下，「${position}」的《${card}》${orientation}也许指向另一件事：${meaning}。`,
+  ]
+  const mainRead = choose(mainTemplates, seed, 2)(
+    DEMO_POSITION_LABELS[mainCard.position],
+    mainCard.card.name,
+    orientationLabel(mainCard),
+    shortMeaning(mainCard, 62),
+  )
+  const counterRead = `${choose(counterTemplates, seed, 3)(
+    DEMO_POSITION_LABELS[counterCard.position],
+    counterCard.card.name,
+    orientationLabel(counterCard),
+    shortMeaning(counterCard, 62),
+  )}${choose(COUNTER_VOICES, seed, 8)}`
 
   return [
-    intro,
-    lens,
-    meta,
-    ...voices,
-    counter,
-    authority,
-    ...(caution ? [caution] : []),
-    prompt,
+    `${intro}${lens}`,
+    `${demoSpreadLine(cards)}${mainRead}`,
+    `${counterRead}${caution ? ` ${caution}` : ''}`,
+    `不必现在选哪一边；${asPrompt(prompt)}`,
   ].join('\n\n')
 }
 
@@ -1229,9 +1263,15 @@ export function demoReply(
   question: string,
   cards: DrawnCard[],
   messages: ChatMessage[],
+  lens?: ReadingLens,
 ): string {
   const userMessages = messages.filter((message) => message.role === 'user')
   const lastUser = userMessages[userMessages.length - 1]?.content ?? ''
+  const recentAssistant = messages
+    .filter((message) => message.role === 'assistant')
+    .slice(-4)
+    .map((message) => message.content)
+    .join('\n')
   const concern = conversationConcern(question, messages)
   if (concern) return safetyReply(concern)
   if (isTaskRequest(question)) return TASK_REPLY
@@ -1250,7 +1290,7 @@ export function demoReply(
   const action = cards[2]
 
   if (theme.key === 'grief') {
-    const bridge = choose(
+    const bridge = chooseFresh(
       [
         '想念不需要被解释成一个需要解决的问题，它只是说明那段关系对你仍然重要。',
         '你不需要按任何进度悲伤。能把一部分感受说出来，就已经在照顾自己。',
@@ -1259,8 +1299,9 @@ export function demoReply(
       ],
       seed,
       2,
+      recentAssistant,
     )
-    const meta = choose(
+    const meta = chooseFresh(
       [
         '没有哪一种悲伤是标准答案。',
         '你可以保留自己的节奏，不必向任何人证明已经走出来。',
@@ -1269,18 +1310,9 @@ export function demoReply(
       ],
       seed,
       3,
+      recentAssistant,
     )
-    const witness = choose(
-      [
-        '你不需要把这份想念解释清楚，它本身就有重量。',
-        '如果今天只能想念，也说明那段关系真实地存在过。',
-        '你可以慢一点，悲伤没有统一的进度。',
-        '愿意说出来，已经是在照顾自己。',
-      ],
-      seed,
-      5,
-    )
-    const prompt = choose(
+    const prompt = chooseFresh(
       [
         ...new Set([
           ...theme.prompts,
@@ -1292,8 +1324,13 @@ export function demoReply(
       ],
       seed,
       4,
+      recentAssistant,
     )
-    return [echo, bridge, witness, meta, asPrompt(prompt)].join('\n\n')
+    return [
+      `${echo} ${bridge}`,
+      meta,
+      asPrompt(prompt),
+    ].join('\n\n')
   }
 
   const firstBridges = [
@@ -1310,9 +1347,9 @@ export function demoReply(
   ]
   const bridge =
     turn <= 1
-      ? choose(firstBridges, seed, 2)
+      ? chooseFresh(firstBridges, seed, 2, recentAssistant)
       : turn === 2
-        ? choose(
+        ? chooseFresh(
             [
               `把它放回牌阵：处境是「${keywordsOf(situation)[0]}」，行动位是「${keywordsOf(action)[0]}」。你难的也许正是这段距离。`,
               `你这次说的，和牌阵里的「${keywordsOf(blindspot)[0]}」撞在了一起。`,
@@ -1322,8 +1359,9 @@ export function demoReply(
             ],
             seed,
             2,
+            recentAssistant,
           )
-        : choose(
+        : chooseFresh(
             [
               `你几次提到「${focus}」；它可能不是问题，而是你正在靠近的答案。`,
               `这段对话里，「${uniqueKeywords(cards).slice(0, 2).join('、')}」一直没有离开。`,
@@ -1333,46 +1371,133 @@ export function demoReply(
             ],
             seed,
             2,
+            recentAssistant,
           )
 
-  const pair =
-    turn <= 1
+  if (lens) {
+    const lensInfo = READING_LENSES.find((item) => item.id === lens)
+    const [lensCard, otherCard] =
+      lens === 'relationship'
+        ? [situation, blindspot]
+        : lens === 'inner'
+          ? [blindspot, action]
+          : [action, situation]
+    const lensKeywords = keywordsOf(lensCard)
+    const otherKeywords = keywordsOf(otherCard)
+    const lensBodies: Record<ReadingLens, string[]> = {
+      relationship: [
+        `如果只看你们之间的动力，「${DEMO_POSITION_LABELS[lensCard.position]}」的《${lensCard.card.name}》把「${lensKeywords[0] ?? '靠近'}」放在桌面上；另一边「${otherKeywords[0] ?? '退让'}」也在拉扯。谁都没有错，只是两种期待还没被说清。这不一定说明关系变差了，也可能只是你们都在用旧的方式保护自己。`,
+        `把镜头拉回关系里，《${lensCard.card.name}》${orientationLabel(lensCard)}让我想到「${lensKeywords[0] ?? '靠近'}」：它可能既是你想靠近的方式，也是你保护自己的方式。对方的动作先不解释，只看看你这边在等什么。也许你等的不是一个答案，而是一个更安全的靠近方式。`,
+      ],
+      inner: [
+        `把镜头收回到你心里，《${lensCard.card.name}》${orientationLabel(lensCard)}把「${lensKeywords[0] ?? '靠近'}」和「${lensKeywords[1] ?? '退让'}」同时举了起来。一部分想往前走，另一部分想保住现有的安全；它们不是敌人，只是还没找到同一个方向。也许它们争的不是对错，而是同一种安全。`,
+        `如果只看内在冲突，「${lensKeywords[0] ?? '靠近'}」像一股想往前的力，「${lensKeywords[1] ?? otherKeywords[0] ?? '退让'}」像另一股想保住的力。《${lensCard.card.name}》${orientationLabel(lensCard)}没有判谁对，它只是把这两股力放在同一张桌上。不一定哪一股更真实，也可能它们都在替你争取同一种安全。`,
+      ],
+      action: [
+        `如果只看下一步，行动位的《${lensCard.card.name}》${orientationLabel(lensCard)}把「${lensKeywords[0] ?? '下一步'}」交给你：不是要你立刻决定，而是先设一个边界，看看身体在哪一刻松了一点。这不一定是一个承诺，也可能只是给自己留一点回旋。`,
+        `把镜头停在行动位：《${lensCard.card.name}》${orientationLabel(lensCard)}提醒「${lensKeywords[0] ?? '下一步'}」。下一步不必很大，可以先做一个能让身体少紧一点的选择。也许你不需要一次走完，只要先让自己不再那么绷着。`,
+      ],
+    }
+    const body = `${chooseFresh(
+      lensBodies[lens],
+      seed,
+      9,
+      recentAssistant,
+    )}这也许只是这一层的一个读法，不必现在定论。`
+    const promptPool = [
+      ...lensCard.card.prompts,
+      ...theme.prompts,
+      ...THEME_EXTRAS[theme.key].prompts,
+      ...THEME_CORPUS[theme.key].prompts,
+      ...FRAME_PROMPTS[frame.key],
+      ...STAGE_PROMPTS,
+    ].filter(Boolean)
+    const prompt = chooseFresh(
+      [...new Set(promptPool)],
+      seed,
+      10,
+      recentAssistant,
+    )
+    return [
+      `${echo} 这次换一个角度：${lensInfo?.label ?? ''}。`,
+      body,
+      asPrompt(prompt),
+    ].join('\n\n')
+  }
+
+  const openingSeed = seedBase(question, cards)
+  const openingPair =
+    openingSeed % 2 === 0
       ? [situation, blindspot]
+      : [situation, action]
+  const unusedCard =
+    cards.find((card) => !openingPair.includes(card)) ?? action
+  const lensPair =
+    lens === 'relationship'
+      ? [situation, blindspot]
+      : lens === 'inner'
+        ? [blindspot, action]
+        : lens === 'action'
+          ? [action, situation]
+          : null
+  const [mainCard, counterCard] =
+    lensPair ??
+    (turn <= 1
+      ? [unusedCard, situation]
       : turn === 2
         ? [blindspot, action]
-        : [action, situation]
-  const leadPool = [
-    '一种读法是：',
-    '换一面镜子看：',
-    '另一个角度是：',
-    '把这句话交给牌面：',
-    '还有一个版本是：',
-    '也可以听成：',
+        : [action, situation])
+  const replyMainTemplates = [
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `我更倾向把这句话放回「${position}」的《${card}》${orientation}：这可能是说，${meaning}。`,
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `这次我更愿意从「${position}」的《${card}》${orientation}看：它也许在说，${meaning}。`,
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `如果先只信一面，我会看「${position}」的《${card}》${orientation}：这可能是在提醒，${meaning}。`,
   ]
-  const lead1 = choose(leadPool, seed, 3)
-  let lead2 = choose(leadPool, seed, 4)
-  if (lead2 === lead1) {
-    lead2 = leadPool[(leadPool.indexOf(lead1) + 1) % leadPool.length]
-  }
-  const voice1 = `${lead1}《${pair[0].card.name}》会说：${shortMeaning(pair[0], 40)}。`
-  const voice2 = `${lead2}《${pair[1].card.name}》会说：${shortMeaning(pair[1], 40)}。`
-  const meta = choose(REPLY_METAS, seed, 5)
+  const replyCounterTemplates = [
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `但如果反过来看，「${position}」的《${card}》${orientation}提醒：这也许是在说，${meaning}。`,
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `另一面也得算进来：「${position}」的《${card}》${orientation}也可能是在说，${meaning}。`,
+    (position: string, card: string, orientation: string, meaning: string) =>
+      `反读一下，「${position}」的《${card}》${orientation}也许指向另一件事：${meaning}。`,
+  ]
+  const lensLabel = lens
+    ? READING_LENSES.find((item) => item.id === lens)?.label ?? ''
+    : ''
+  const mainRead = choose(replyMainTemplates, seed, 3)(
+    DEMO_POSITION_LABELS[mainCard.position],
+    mainCard.card.name,
+    orientationLabel(mainCard),
+    shortMeaning(mainCard, 50),
+  )
+  const counterRead = `${choose(replyCounterTemplates, seed, 4)(
+    DEMO_POSITION_LABELS[counterCard.position],
+    counterCard.card.name,
+    orientationLabel(counterCard),
+    shortMeaning(counterCard, 50),
+  )}${chooseFresh(REPLY_METAS, seed, 5, recentAssistant)}`
   const promptPool = [
-    ...pair.flatMap((card) => [...card.card.prompts]),
+    ...mainCard.card.prompts,
+    ...counterCard.card.prompts,
     ...theme.prompts,
     ...THEME_EXTRAS[theme.key].prompts,
     ...THEME_CORPUS[theme.key].prompts,
     ...FRAME_PROMPTS[frame.key],
     ...STAGE_PROMPTS,
-  ]
-  const prompt = choose([...new Set(promptPool)], seed, 6)
+  ].filter(Boolean)
+  const prompt = chooseFresh(
+    [...new Set(promptPool)],
+    seed,
+    6,
+    recentAssistant,
+  )
 
   return [
-    echo,
-    bridge,
-    voice1,
-    voice2,
-    meta,
+    `${echo}${lensLabel ? ` 这次换一个角度：${lensLabel}。` : ''} ${bridge}`,
+    mainRead,
+    counterRead,
     asPrompt(prompt),
   ].join('\n\n')
 }
@@ -1425,9 +1550,10 @@ export function demoInsight(
   if (theme.key === 'grief') {
     const title = choose(
       [
-        `关于思念与「${safety[0]}」的照见`,
-        `一面关于「${safety[0]}」的镜子`,
-        `想念留下的几种声音`,
+        '想念留下的几种声音',
+        `「${safety[0]}」还在的时候`,
+        `思念与「${safety[0]}」`,
+        '不必急着走出来的想念',
       ],
       seed,
       1,
@@ -1453,10 +1579,10 @@ export function demoInsight(
 
   const title = choose(
     [
-      `关于${theme.titleWord}与「${safety[0]}」的照见`,
-      `一面关于「${safety[0]}」的镜子`,
-      `${theme.titleWord}里的几种声音`,
-      `把「${safety[0]}」放回光里`,
+      `${theme.titleWord}：${safety[0]}与${safety[1] ?? '此刻'}`,
+      `「${safety[0]}」背后，还有「${safety[1] ?? '此刻'}」`,
+      `${theme.titleWord}里的两股拉力`,
+      `把「${safety[0]}」说清楚`,
     ],
     seed,
     1,

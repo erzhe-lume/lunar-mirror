@@ -72,11 +72,11 @@ function PortalDial() {
           y2="738"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0" stopColor="#fbf1d8" stopOpacity="0.92" />
-          <stop offset="0.24" stopColor="#d9b970" stopOpacity="0.42" />
-          <stop offset="0.48" stopColor="#7d6135" stopOpacity="0.28" />
-          <stop offset="0.74" stopColor="#f4dda6" stopOpacity="0.68" />
-          <stop offset="1" stopColor="#67512e" stopOpacity="0.36" />
+          <stop offset="0" stopColor="#f6f6f2" stopOpacity="0.92" />
+          <stop offset="0.24" stopColor="#b9c0c8" stopOpacity="0.42" />
+          <stop offset="0.48" stopColor="#5f666e" stopOpacity="0.28" />
+          <stop offset="0.74" stopColor="#e7eaed" stopOpacity="0.68" />
+          <stop offset="1" stopColor="#4a5057" stopOpacity="0.36" />
         </linearGradient>
         <path id="intro-arc-text" d="M 164 400 A 236 236 0 0 1 636 400" />
       </defs>
@@ -93,7 +93,7 @@ function PortalDial() {
         cx="400"
         cy="400"
         r="384"
-        stroke="#f4dda6"
+        stroke="#e7eaed"
         strokeOpacity="0.14"
         strokeWidth="0.7"
         vectorEffect="non-scaling-stroke"
@@ -103,7 +103,7 @@ function PortalDial() {
         cx="400"
         cy="400"
         r="392"
-        stroke="#f7e6bd"
+        stroke="#f1f2f0"
         strokeOpacity="0.55"
         strokeWidth="1.8"
         strokeLinecap="round"
@@ -114,7 +114,7 @@ function PortalDial() {
         cx="400"
         cy="400"
         r="375"
-        stroke="#f4dda6"
+        stroke="#e7eaed"
         strokeOpacity="0.34"
         strokeWidth="2.1"
         strokeLinecap="round"
@@ -129,7 +129,7 @@ function PortalDial() {
           y1={outer.y}
           x2={inner.x}
           y2={inner.y}
-          stroke="#f4dda6"
+          stroke="#e7eaed"
           strokeOpacity={major ? 0.52 : 0.22}
           strokeWidth={major ? 1.1 : 0.7}
           vectorEffect="non-scaling-stroke"
@@ -153,7 +153,7 @@ function PortalDial() {
         cx="400"
         cy="400"
         r="316"
-        stroke="#d9b970"
+        stroke="#b9c0c8"
         strokeOpacity="0.2"
         strokeWidth="0.8"
         strokeDasharray="352 144"
@@ -164,7 +164,7 @@ function PortalDial() {
         cx="400"
         cy="400"
         r="308"
-        stroke="#f4dda6"
+        stroke="#e7eaed"
         strokeOpacity="0.1"
         strokeWidth="0.7"
         strokeDasharray="2 14"
@@ -174,7 +174,7 @@ function PortalDial() {
         cx="400"
         cy="400"
         r="291"
-        stroke="#f4dda6"
+        stroke="#e7eaed"
         strokeOpacity="0.26"
         strokeWidth="1.9"
         strokeLinecap="round"
@@ -186,7 +186,7 @@ function PortalDial() {
         <path
           key={`${x}-${y}`}
           d="M 0 -6 L 3.2 0 L 0 6 L -3.2 0 Z"
-          fill="#f4dda6"
+          fill="#e7eaed"
           fillOpacity="0.55"
           transform={`translate(${x} ${y})`}
         />
@@ -202,7 +202,7 @@ function PortalDial() {
         cx="400"
         cy="400"
         r="202"
-        stroke="#f4dda6"
+        stroke="#e7eaed"
         strokeOpacity="0.22"
         strokeWidth="0.8"
         vectorEffect="non-scaling-stroke"
@@ -211,7 +211,7 @@ function PortalDial() {
         cx="400"
         cy="400"
         r="192"
-        stroke="#d9b970"
+        stroke="#b9c0c8"
         strokeOpacity="0.16"
         strokeWidth="0.7"
         strokeDasharray="1 7"
@@ -228,8 +228,9 @@ export default function Intro({ onDone }: Props) {
   const finishedRef = useRef(false)
   const timersRef = useRef<number[]>([])
   const trapRef = useFocusTrap<HTMLDivElement>(true)
+  const lite = isLitePerf()
 
-  const cardCount = isLitePerf()
+  const cardCount = lite
     ? 7
     : typeof window !== 'undefined' && window.innerWidth < 1024
       ? 9
@@ -244,9 +245,9 @@ export default function Intro({ onDone }: Props) {
     if (finishedRef.current) return
     finishedRef.current = true
     setLeaving(true)
-    const timer = window.setTimeout(onDone, 900)
+    const timer = window.setTimeout(onDone, lite ? 550 : 900)
     timersRef.current.push(timer)
-  }, [onDone])
+  }, [onDone, lite])
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -255,24 +256,28 @@ export default function Intro({ onDone }: Props) {
     }
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    const timers = timersRef.current
 
     const schedule = (delay: number, action: () => void) => {
-      timersRef.current.push(window.setTimeout(action, delay))
+      timers.push(window.setTimeout(action, delay))
     }
-    schedule(800, () => setStage('portal'))
-    schedule(1500, () => setStage('fan'))
-    schedule(3000, () => {
+    const timeline = lite
+      ? { portal: 200, fan: 450, reveal: 800, ready: 1200, finish: 3200 }
+      : { portal: 500, fan: 1000, reveal: 1900, ready: 2800, finish: 6500 }
+    schedule(timeline.portal, () => setStage('portal'))
+    schedule(timeline.fan, () => setStage('fan'))
+    schedule(timeline.reveal, () => {
       setStage('reveal')
       setPeek(true)
     })
-    schedule(4200, () => setStage('ready'))
-    schedule(8000, finish)
+    schedule(timeline.ready, () => setStage('ready'))
+    schedule(timeline.finish, finish)
 
     return () => {
       document.body.style.overflow = previousOverflow
-      timersRef.current.forEach((timer) => window.clearTimeout(timer))
+      timers.forEach((timer) => window.clearTimeout(timer))
     }
-  }, [finish])
+  }, [finish, lite])
 
   return (
     <div
@@ -310,7 +315,7 @@ export default function Intro({ onDone }: Props) {
               cx="100"
               cy="100"
               r="78"
-              stroke="#f4dda6"
+              stroke="#e7eaed"
               strokeOpacity="0.22"
               strokeWidth="0.6"
               strokeDasharray="1 5"
@@ -320,14 +325,14 @@ export default function Intro({ onDone }: Props) {
               cx="100"
               cy="100"
               r="56"
-              stroke="#d9b970"
+              stroke="#b9c0c8"
               strokeOpacity="0.18"
               strokeWidth="0.5"
               vectorEffect="non-scaling-stroke"
             />
             <path
               d="M100 22 L103.2 96.8 L178 100 L103.2 103.2 L100 178 L96.8 103.2 L22 100 L96.8 96.8 Z"
-              stroke="#f4dda6"
+              stroke="#e7eaed"
               strokeOpacity="0.34"
               strokeWidth="0.6"
               vectorEffect="non-scaling-stroke"
@@ -335,12 +340,12 @@ export default function Intro({ onDone }: Props) {
             <path
               d="M100 46 L102.2 97.8 L154 100 L102.2 102.2 L100 154 L97.8 102.2 L46 100 L97.8 97.8 Z"
               transform="rotate(45 100 100)"
-              stroke="#d9b970"
+              stroke="#b9c0c8"
               strokeOpacity="0.24"
               strokeWidth="0.5"
               vectorEffect="non-scaling-stroke"
             />
-            <circle cx="100" cy="100" r="1.6" fill="#f4dda6" fillOpacity="0.8" />
+            <circle cx="100" cy="100" r="1.6" fill="#e7eaed" fillOpacity="0.8" />
           </svg>
           <span className="portal-core-sheen" />
           <span className="portal-star portal-star-a" />

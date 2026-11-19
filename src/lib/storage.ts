@@ -159,17 +159,36 @@ export function loadReadingSnapshot(
 export function saveReadingSnapshot(
   snapshot: Omit<ReadingSnapshot, 'version' | 'signature'>,
 ): void {
+  const signature = readingSignature(snapshot.question, snapshot.cards)
   try {
+    localStorage.setItem(
+      READING_KEY,
+      JSON.stringify({ ...snapshot, version: 1, signature }),
+    )
+    return
+  } catch {
+    // 图片快照最容易撑满配额，先退回纯文本快照，避免刷新恢复整体失效。
+  }
+
+  try {
+    localStorage.removeItem(READING_KEY)
     localStorage.setItem(
       READING_KEY,
       JSON.stringify({
         ...snapshot,
+        savedEntry: snapshot.savedEntry
+          ? { ...snapshot.savedEntry, snapshot: undefined }
+          : null,
         version: 1,
-        signature: readingSignature(snapshot.question, snapshot.cards),
+        signature,
       }),
     )
   } catch {
-    // 存储空间不足时不阻塞当前对话。
+    try {
+      localStorage.removeItem(READING_KEY)
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -354,6 +373,14 @@ export async function saveEntry(entry: JournalEntry): Promise<void> {
       reject(tx.error)
     }
   })
+}
+
+export async function saveEntries(entries: JournalEntry[]): Promise<void> {
+  if (entries.length === 0) return
+  const db = await openDb()
+  const written = await writeEntries(db, entries)
+  db.close()
+  if (!written) throw new Error('记录写入失败')
 }
 
 export async function deleteEntry(id: string): Promise<void> {

@@ -866,7 +866,7 @@ export default function SettingsModal({
           )}
 
           <span className="model-manager-foot">
-            开关会立即生效；填写下方接口后，可用表单内的保存按钮直接写入。
+            开关会立即生效；填写接口后，可在表单底部保存为独立模型。
           </span>
         </div>
 
@@ -876,53 +876,26 @@ export default function SettingsModal({
             <span className="settings-current">{currentProvider}</span>
           </div>
 
-          <div className="model-save-row">
-            <button
-              type="button"
-              className="primary-btn small"
-              onClick={() => saveCurrentModel(false)}
-            >
-              保存并启用
-            </button>
-            <button
-              type="button"
-              className="ghost-btn small"
-              onClick={() => saveCurrentModel(true)}
-            >
-              另存为新模型
-            </button>
-            {gatewayModels.length > 0 && (
-              <button
-                type="button"
-                className="ghost-btn small"
-                onClick={saveGatewayModels}
-              >
-                保存全部 {gatewayModels.length} 个
-              </button>
-            )}
-            {modelNotice && (
-              <span className="model-save-note" role="status">
-                {modelNotice}
-              </span>
-            )}
-          </div>
-
           <div className="field">
-            <span className="field-label">协议</span>
-            <div className="protocol-row" role="group" aria-label="接口协议">
-              {API_PROTOCOLS.map((protocol) => (
-                <button
-                  key={protocol.id}
-                  type="button"
-                  className={`protocol-pill ${apiProtocol === protocol.id ? 'is-active' : ''}`}
-                  aria-pressed={apiProtocol === protocol.id}
-                  onClick={() => selectProtocol(protocol.id)}
-                >
-                  <strong>{protocol.label}</strong>
-                  <span>{protocol.caption}</span>
-                </button>
-              ))}
-            </div>
+            {API_PROTOCOLS.length > 1 && (
+              <>
+                <span className="field-label">协议</span>
+                <div className="protocol-row" role="group" aria-label="接口协议">
+                  {API_PROTOCOLS.map((protocol) => (
+                    <button
+                      key={protocol.id}
+                      type="button"
+                      className={`protocol-pill ${apiProtocol === protocol.id ? 'is-active' : ''}`}
+                      aria-pressed={apiProtocol === protocol.id}
+                      onClick={() => selectProtocol(protocol.id)}
+                    >
+                      <strong>{protocol.label}</strong>
+                      <span>{protocol.caption}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             <span className="field-hint">{activeProtocol?.hint}</span>
           </div>
 
@@ -942,7 +915,7 @@ export default function SettingsModal({
               ))}
             </div>
             <span className="field-hint">
-              点选会填入协议、Base URL 和示例模型；其他服务或网关可以直接修改地址与模型。
+              点选会填入 Base URL 和示例模型；其他 OpenAI 兼容网关可以直接修改地址与模型。
             </span>
           </div>
 
@@ -994,8 +967,7 @@ export default function SettingsModal({
             />
             <span className="endpoint-preview">POST {endpointPreview}</span>
             <span className="field-hint">
-              可填服务商 base URL 或完整端点。OpenAI 兼容会自动补 /chat/completions，
-              Anthropic 补 /v1/messages，Gemini 补 /models/模型:generateContent。
+              可填服务商 base URL 或完整端点。OpenAI 兼容接口会自动补 /chat/completions；Base URL 保留 /v1 时也可以。
             </span>
           </label>
 
@@ -1103,6 +1075,37 @@ export default function SettingsModal({
               >
                 {testResult.text}
               </p>
+            )}
+          </div>
+
+          <div className="model-save-row">
+            <button
+              type="button"
+              className="primary-btn small"
+              onClick={() => saveCurrentModel(false)}
+            >
+              保存并启用
+            </button>
+            <button
+              type="button"
+              className="ghost-btn small"
+              onClick={() => saveCurrentModel(true)}
+            >
+              另存为新模型
+            </button>
+            {gatewayModels.length > 0 && (
+              <button
+                type="button"
+                className="ghost-btn small"
+                onClick={saveGatewayModels}
+              >
+                保存全部 {gatewayModels.length} 个
+              </button>
+            )}
+            {modelNotice && (
+              <span className="model-save-note" role="status">
+                {modelNotice}
+              </span>
             )}
           </div>
         </div>

@@ -29,8 +29,8 @@ export default function Astrolabe() {
     >
       <defs>
         <linearGradient id={goldId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f4dda6" stopOpacity="0.65" />
-          <stop offset="100%" stopColor="#d9b970" stopOpacity="0.08" />
+          <stop offset="0%" stopColor="#e9ecee" stopOpacity="0.65" />
+          <stop offset="100%" stopColor="#b9c0c8" stopOpacity="0.08" />
         </linearGradient>
       </defs>
 
@@ -47,7 +47,7 @@ export default function Astrolabe() {
         cy="360"
         r="318"
         fill="none"
-        stroke="#d9b970"
+        stroke="#b9c0c8"
         strokeOpacity="0.18"
         strokeDasharray="1 9"
       />
@@ -56,7 +56,7 @@ export default function Astrolabe() {
         cy="360"
         r="280"
         fill="none"
-        stroke="#d9b970"
+        stroke="#b9c0c8"
         strokeOpacity="0.2"
       />
       <circle
@@ -64,11 +64,11 @@ export default function Astrolabe() {
         cy="360"
         r="222"
         fill="none"
-        stroke="#d9b970"
+        stroke="#b9c0c8"
         strokeOpacity="0.14"
         strokeDasharray="2 12"
       />
-      <circle cx="360" cy="360" r="110" fill="none" stroke="#d9b970" strokeOpacity="0.22" />
+      <circle cx="360" cy="360" r="110" fill="none" stroke="#b9c0c8" strokeOpacity="0.22" />
 
       <g className="astro-outer">
         {OUTER_TICKS.map((degree) => (
@@ -78,7 +78,7 @@ export default function Astrolabe() {
             y1="16"
             x2="360"
             y2={degree % 30 === 0 ? 38 : 26}
-            stroke="#d9b970"
+            stroke="#b9c0c8"
             strokeOpacity={degree % 30 === 0 ? 0.5 : 0.22}
             strokeWidth={degree % 30 === 0 ? 1 : 0.6}
             transform={`rotate(${degree} 360 360)`}
@@ -89,7 +89,7 @@ export default function Astrolabe() {
             key={glyph}
             x="360"
             y="64"
-            fill="#d9b970"
+            fill="#b9c0c8"
             fillOpacity="0.6"
             fontSize="17"
             textAnchor="middle"
@@ -108,7 +108,7 @@ export default function Astrolabe() {
             y1="80"
             x2="360"
             y2="92"
-            stroke="#d9b970"
+            stroke="#b9c0c8"
             strokeOpacity="0.28"
             strokeWidth="0.7"
             transform={`rotate(${degree} 360 360)`}
@@ -119,7 +119,7 @@ export default function Astrolabe() {
             key={numeral}
             x="360"
             y="112"
-            fill="#d9b970"
+            fill="#b9c0c8"
             fillOpacity="0.42"
             fontSize="9"
             letterSpacing="3"
@@ -131,11 +131,11 @@ export default function Astrolabe() {
         ))}
       </g>
 
-      <g stroke="#d9b970" strokeOpacity="0.16">
+      <g stroke="#b9c0c8" strokeOpacity="0.16">
         <path d="M360 18 L360 700" />
         <path d="M18 360 L700 360" />
       </g>
-      <circle cx="360" cy="360" r="4" fill="#f4dda6" fillOpacity="0.5" />
+      <circle cx="360" cy="360" r="4" fill="#e9ecee" fillOpacity="0.5" />
     </svg>
   )
 }

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { DrawnCard, Insight } from '../types'
 import { POSITIONS } from '../types'
 import { formatDate } from '../lib/format'
-import { downloadInsightImage } from '../lib/share'
+import type { ShareFormat } from '../lib/share'
 import { composeVerse } from '../lib/verse'
 import TarotCard from './TarotCard'
 
@@ -40,15 +40,16 @@ export default function InsightCard({
   const verse = composeVerse(insight, cards)
   const [shareState, setShareState] = useState<{
     status: 'idle' | 'saving' | 'saved' | 'error'
-    format: 'poster' | 'story'
+    format: ShareFormat
   }>({ status: 'idle', format: 'poster' })
   const savingRef = useRef(false)
 
-  const saveImage = async (format: 'poster' | 'story') => {
+  const saveImage = async (format: ShareFormat) => {
     if (savingRef.current) return
     savingRef.current = true
     setShareState({ status: 'saving', format })
     try {
+      const { downloadInsightImage } = await import('../lib/share')
       await downloadInsightImage(
         {
           insight,
@@ -76,7 +77,7 @@ export default function InsightCard({
     }
   }
 
-  const shareLabel = (format: 'poster' | 'story') => {
+  const shareLabel = (format: ShareFormat) => {
     if (shareState.status === 'saving' && shareState.format === format) {
       return '正在显影…'
     }
@@ -86,7 +87,9 @@ export default function InsightCard({
     if (shareState.status === 'error' && shareState.format === format) {
       return '生成失败，重试'
     }
-    return format === 'story' ? '竖版 9:16' : '保存签文图'
+    if (format === 'story') return '保存竖版'
+    if (format === 'long') return '保存长图'
+    return '保存签文图'
   }
 
   const saving = shareState.status === 'saving'
@@ -187,7 +190,15 @@ export default function InsightCard({
         >
           {shareLabel('story')}
         </button>
-        <span>4:5 / 9:16 · 只在本机生成</span>
+        <button
+          type="button"
+          className="ghost-btn small"
+          onClick={() => void saveImage('long')}
+          disabled={saving}
+        >
+          {shareLabel('long')}
+        </button>
+        <span>4:5 · 9:16 · 自省长图 · 仅本机生成</span>
       </div>
     </article>
   )

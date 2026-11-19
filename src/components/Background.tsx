@@ -45,6 +45,17 @@ const mandalaMarks = Array.from({ length: 12 }, (_, index) => {
   }
 })
 
+function seededRandom(seed: number) {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let value = state
+    value = Math.imul(value ^ (value >>> 15), value | 1)
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+  }
+}
+
 const constellationGroups = [
   {
     points: [
@@ -94,34 +105,31 @@ const constellationGroups = [
 
 export default function Background() {
   const lite = useMemo(() => isLitePerf(), [])
-  const stars = useMemo<Star[]>(
-    () =>
-      Array.from({ length: lite ? 30 : 110 }, () => ({
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        size: Math.random() * 1.8 + 0.8,
-        delay: Math.random() * 6,
-        duration: Math.random() * 5 + 3,
-        opacity: Math.random() * 0.5 + 0.2,
-      })),
-    [lite],
-  )
-  const dust = useMemo<Dust[]>(
-    () =>
-      lite
-        ? []
-        : Array.from({ length: 26 }, () => ({
-            left: Math.random() * 100,
-            top: Math.random() * 100,
-            size: Math.random() * 2.2 + 1,
-            delay: Math.random() * 9,
-            duration: Math.random() * 8 + 9,
-            dx: (Math.random() - 0.5) * 46,
-            dy: (Math.random() - 0.5) * 70 - 22,
-            opacity: Math.random() * 0.45 + 0.15,
-          })),
-    [lite],
-  )
+  const stars = useMemo<Star[]>(() => {
+    const random = seededRandom(lite ? 19 : 71)
+    return Array.from({ length: lite ? 30 : 110 }, () => ({
+      left: random() * 100,
+      top: random() * 100,
+      size: random() * 1.8 + 0.8,
+      delay: random() * 6,
+      duration: random() * 5 + 3,
+      opacity: random() * 0.5 + 0.2,
+    }))
+  }, [lite])
+  const dust = useMemo<Dust[]>(() => {
+    if (lite) return []
+    const random = seededRandom(23)
+    return Array.from({ length: 26 }, () => ({
+      left: random() * 100,
+      top: random() * 100,
+      size: random() * 2.2 + 1,
+      delay: random() * 9,
+      duration: random() * 8 + 9,
+      dx: (random() - 0.5) * 46,
+      dy: (random() - 0.5) * 70 - 22,
+      opacity: random() * 0.45 + 0.15,
+    }))
+  }, [lite])
   const cursorRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {

@@ -1,0 +1,686 @@
+/* ---------- 视觉刷新：更安静、更清晰、更适合手机 ---------- */
+:root {
+  --refresh-gap: clamp(14px, 2.2vw, 24px);
+  --refresh-border: rgba(232, 205, 145, 0.14);
+  --refresh-border-strong: rgba(232, 205, 145, 0.26);
+  --refresh-panel: linear-gradient(
+    180deg,
+    rgba(18, 19, 34, 0.86),
+    rgba(9, 10, 19, 0.94)
+  );
+  --refresh-shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
+  --refresh-soft-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+}
+
+::selection {
+  color: #1a130a;
+  background: rgba(244, 221, 166, 0.82);
+}
+
+:where(button, input, textarea, select, a):focus-visible {
+  outline: 1px solid rgba(244, 221, 166, 0.66);
+  outline-offset: 3px;
+}
+
+:where(button, a) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scrollbar-color: rgba(217, 185, 112, 0.28) transparent;
+}
+
+/* 顶部导航 */
+.site-head {
+  padding: 22px 0 8px;
+}
+
+.brand {
+  min-height: 44px;
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+}
+
+.brand-text strong {
+  font-size: 21px;
+  letter-spacing: 0.12em;
+}
+
+.site-nav {
+  gap: clamp(12px, 2vw, 24px);
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0;
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+}
+
+/* 页面标题区 */
+.stage-head {
+  align-items: center;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(226, 198, 128, 0.1);
+}
+
+.stage-question {
+  max-width: 680px;
+}
+
+.stage-question p {
+  font-size: clamp(19px, 1.9vw, 23px);
+  line-height: 1.55;
+  letter-spacing: 0.015em;
+}
+
+.stage-question .eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+}
+
+.text-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 2px;
+}
+
+/* 统一点击区 */
+.primary-btn {
+  min-height: 50px;
+  padding: 13px 28px;
+}
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 9px 17px;
+}
+
+.ghost-btn.small {
+  min-height: 38px;
+  padding: 7px 14px;
+}
+
+.journal-filter-chip,
+.reading-lens-btn,
+.ring-page-btn,
+.settings-tab {
+  min-height: 40px;
+}
+
+/* 面板表面统一 */
+.ask-panel,
+.chat-panel,
+.insight-card,
+.mirror-letter,
+.journal-preview {
+  border-color: var(--refresh-border);
+  box-shadow: var(--refresh-shadow);
+}
+
+.home-aside-note,
+.latest-card,
+.mirror-block {
+  border-color: var(--refresh-border);
+  box-shadow: var(--refresh-soft-shadow);
+}
+
+/* 首页：压缩下半页，聚焦问题 */
+.home-view {
+  gap: clamp(20px, 2.8vw, 30px);
+}
+
+.hero {
+  padding-top: 4px;
+}
+
+.hero-sub {
+  max-width: 620px;
+}
+
+.ask-kicker {
+  font-size: 9.5px;
+  letter-spacing: 0.26em;
+}
+
+.mode-note {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  font-size: 12px;
+  color: var(--faint);
+  text-align: left;
+  border-top: 1px solid rgba(226, 198, 128, 0.1);
+}
+
+.mode-note-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(244, 221, 166, 0.55);
+}
+
+.mode-note p {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.mode-note strong {
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+.mode-note .inline-link {
+  flex: none;
+  min-height: 32px;
+  font-size: 12px;
+}
+
+/* 时间线：给环形一个文字落点 */
+.journal-preview {
+  width: min(760px, 100%);
+  margin: 18px auto 0;
+  padding: 20px 22px;
+  text-align: left;
+  background: var(--refresh-panel);
+  border: 1px solid var(--refresh-border);
+  border-radius: 18px;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.journal-preview-meta {
+  display: flex;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.journal-preview-meta .eyebrow {
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+}
+
+.journal-preview-cards {
+  font-family: var(--serif);
+  font-size: 12px;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+.journal-preview h3 {
+  margin: 7px 0 3px;
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.journal-preview-title {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.journal-preview-foot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.journal-preview-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.journal-preview-tags span {
+  padding: 4px 9px;
+  font-size: 11px;
+  color: rgba(244, 221, 166, 0.66);
+  background: rgba(217, 185, 112, 0.06);
+  border: 1px solid rgba(217, 185, 112, 0.12);
+  border-radius: 999px;
+}
+
+.journal-search {
+  border-color: var(--refresh-border);
+  box-shadow: var(--refresh-soft-shadow);
+}
+
+.journal-search-count {
+  display: inline-flex;
+  align-self: center;
+  justify-self: end;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+  background: rgba(217, 185, 112, 0.04);
+  border: 1px solid rgba(217, 185, 112, 0.1);
+  border-radius: 999px;
+}
+
+/* 桌面镜面：让左右两列收在同一个高度 */
+.mirror-grid {
+  align-items: stretch;
+}
+
+.mirror-letter {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.letter-coda {
+  margin-top: auto;
+  padding-top: 34px;
+  font-family: var(--serif);
+  font-size: 15px;
+  color: rgba(244, 221, 166, 0.56);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.mirror-letter .mirror-actions {
+  margin-top: 0;
+  padding-top: 16px;
+}
+
+/* 抽牌页：让三张牌位更清楚 */
+.draw-instructions {
+  max-width: 760px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.spread-row {
+  gap: clamp(10px, 1.8vw, 18px);
+}
+
+/* 阅读页：问题、对话与输入区 */
+.reading-view .stage-head {
+  margin-bottom: 18px;
+}
+
+.chat-panel {
+  box-shadow: var(--refresh-shadow);
+}
+
+.chat-input-actions {
+  flex-wrap: wrap;
+}
+
+/* 自省记录：分享按钮更好点 */
+.insight-card .ghost-btn {
+  min-height: 42px;
+}
+
+.insight-card .insight-tools {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 设置：去掉协议噪音后的呼吸感 */
+.settings-modal {
+  max-height: min(920px, calc(100dvh - 32px));
+}
+
+.settings-tabs {
+  background: rgba(8, 7, 14, 0.92);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.settings-api {
+  border-color: var(--refresh-border);
+}
+
+.settings-footer {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 小屏：更轻的页头与更短的首页 */
+@media (max-width: 720px) {
+  .app-inner {
+    padding-right: 18px;
+    padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    padding-left: 18px;
+  }
+
+  .site-head {
+    padding-top: 16px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-text strong {
+    font-size: 20px;
+  }
+
+  .site-nav {
+    gap: 14px;
+  }
+
+  .nav-btn {
+    min-height: 44px;
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+  }
+
+  .app:has(.home-view) .brand-text {
+    display: none;
+  }
+
+  .stage-head {
+    gap: 8px 12px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+  }
+
+  .stage-question p {
+    font-size: 20px;
+  }
+
+  .primary-btn {
+    min-height: 52px;
+  }
+
+  .ghost-btn,
+  .ghost-btn.small,
+  .journal-filter-chip,
+  .reading-lens-btn,
+  .ring-page-btn,
+  .settings-tab,
+  .text-btn {
+    min-height: 44px;
+  }
+
+  .home-view {
+    gap: 20px;
+  }
+
+  .home-aside {
+    gap: 12px;
+  }
+
+  .home-aside .home-aside-quote {
+    display: none;
+  }
+
+  .home-aside-note,
+  .latest-card {
+    padding: 17px 18px;
+  }
+
+  .home-aside-blank p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    font-size: 13.5px;
+    line-height: 1.65;
+  }
+
+  .latest-quote {
+    -webkit-line-clamp: 3;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .mode-note {
+    align-items: flex-start;
+    font-size: 11.5px;
+  }
+
+  .mode-note p {
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .mode-note .inline-link {
+    min-height: 44px;
+    margin-left: auto;
+  }
+
+  .journal-preview {
+    margin-top: 14px;
+    padding: 16px 17px;
+    border-radius: 16px;
+  }
+
+  .journal-preview h3 {
+    font-size: 18px;
+  }
+
+  .journal-preview-foot {
+    align-items: stretch;
+  }
+
+  .journal-preview-foot .ghost-btn {
+    width: 100%;
+  }
+
+  .journal-search {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .journal-search-count {
+    display: none;
+  }
+
+  .mirror-letter {
+    height: auto;
+  }
+
+  .letter-coda {
+    margin-top: 0;
+    padding-top: 20px;
+    text-align: left;
+  }
+
+  .mirror-letter .mirror-actions {
+    padding-top: 14px;
+  }
+
+  .insight-card .ghost-btn {
+    min-height: 44px;
+  }
+
+  .settings-modal {
+    max-height: calc(100dvh - 20px);
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-fan {
+    height: 140px;
+  }
+
+  .hero-copy {
+    margin-top: 6px;
+  }
+
+  .hero-title {
+    font-size: calc(58px * var(--site-type, 1));
+  }
+
+  .hero-divider {
+    margin: 8px 0 6px;
+  }
+
+  .hero-sub {
+    margin-top: 7px;
+    font-size: 13.8px;
+    line-height: 1.75;
+  }
+
+  .hero-ritual {
+    margin-top: 9px;
+  }
+}
+
+@media (min-width: 721px) and (max-height: 940px) {
+  .site-head {
+    padding-top: 14px;
+    padding-bottom: 8px;
+  }
+
+  .hero-fan {
+    height: 165px;
+  }
+
+  .hero-copy {
+    margin-top: 6px;
+  }
+
+  .hero-title {
+    font-size: calc(84px * var(--site-type, 1));
+  }
+
+  .hero-divider {
+    margin: 8px 0 6px;
+  }
+
+  .hero-sub {
+    margin-top: 6px;
+  }
+
+  .hero-ritual {
+    margin-top: 8px;
+  }
+
+  .home-view {
+    gap: 16px;
+  }
+}
+
+@media (min-width: 721px) and (max-height: 820px) {
+  .site-head {
+    padding-top: 8px;
+    padding-bottom: 4px;
+  }
+
+  .hero-fan {
+    height: 140px;
+  }
+
+  .hero-title {
+    font-size: calc(66px * var(--site-type, 1));
+  }
+
+  .hero-sub,
+  .hero-ritual {
+    display: none;
+  }
+
+  .hero-copy {
+    margin-top: 2px;
+  }
+
+  .hero-divider {
+    margin: 6px 0 4px;
+  }
+
+  .home-view {
+    gap: 12px;
+  }
+
+  .ask-panel {
+    padding-top: 20px;
+    padding-bottom: 16px;
+  }
+
+  .ask-input {
+    min-height: 78px;
+  }
+}
+
+@media (max-width: 980px) and (max-height: 520px) {
+  .site-head {
+    padding-top: 10px;
+  }
+
+  .hero-fan {
+    height: 120px;
+  }
+
+  .hero-fan-card.is-center .tarot-card {
+    width: 100px;
+  }
+
+  .hero-copy {
+    margin-top: 2px;
+  }
+
+  .hero-title {
+    font-size: calc(48px * var(--site-type, 1));
+  }
+
+  .hero-divider {
+    margin: 6px 0 4px;
+  }
+
+  .hero-sub,
+  .hero-ritual {
+    display: none;
+  }
+
+  .home-view {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-inner {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .site-nav {
+    gap: 10px;
+  }
+
+  .nav-btn {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  .stage-question p {
+    font-size: 18.5px;
+  }
+
+  .journal-preview-cards {
+    display: none;
+  }
+}

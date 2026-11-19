@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { DrawnCard, JournalEntry, Settings } from './types'
 import { setBgmVolume, startBgm, stopBgm } from './lib/bgm'
 import { detectSafetyConcern, type SafetyKind } from './lib/crisis'
@@ -10,6 +10,7 @@ import {
   listEntries,
   loadNavigation,
   loadSettings,
+  saveEntries,
   saveEntry,
   saveNavigation,
   saveSettings,
@@ -17,20 +18,23 @@ import {
 import Background from './components/Background'
 import Intro from './components/Intro'
 import PosterFrame from './components/PosterFrame'
-import SettingsModal from './components/SettingsModal'
 import SafetyGate from './components/SafetyGate'
 import SealMark from './components/SealMark'
 import HomeView from './views/HomeView'
-import DrawView from './views/DrawView'
-import ReadingView from './views/ReadingView'
-import JournalView from './views/JournalView'
-import MirrorView from './views/MirrorView'
 import './App.css'
 import './visual-polish.css'
 import './model-manager.css'
 import './ring-timeline.css'
 import './ring-ritual.css'
 import './theme.css'
+import './visual-refresh.css'
+import './moon-silver.css'
+
+const SettingsModal = lazy(() => import('./components/SettingsModal'))
+const DrawView = lazy(() => import('./views/DrawView'))
+const ReadingView = lazy(() => import('./views/ReadingView'))
+const JournalView = lazy(() => import('./views/JournalView'))
+const MirrorView = lazy(() => import('./views/MirrorView'))
 
 type View = 'home' | 'draw' | 'reading' | 'journal' | 'mirror'
 
@@ -87,6 +91,7 @@ export default function App() {
   const skipHistoryRef = useRef(false)
   const viewRef = useRef(view)
   const navStateRef = useRef({ session, draft })
+  const bgmVolumeRef = useRef(settings.bgmVolume)
 
   useEffect(() => {
     viewRef.current = view
@@ -177,8 +182,8 @@ export default function App() {
       stopBgm()
       return
     }
-    startBgm(settings.bgmVolume)
-    const unlock = () => startBgm(settings.bgmVolume)
+    startBgm(bgmVolumeRef.current)
+    const unlock = () => startBgm(bgmVolumeRef.current)
     window.addEventListener('pointerdown', unlock, { once: true })
     return () => {
       window.removeEventListener('pointerdown', unlock)
@@ -187,6 +192,7 @@ export default function App() {
   }, [settings.bgmEnabled])
 
   useEffect(() => {
+    bgmVolumeRef.current = settings.bgmVolume
     setBgmVolume(settings.bgmVolume)
   }, [settings.bgmVolume])
 
@@ -219,6 +225,16 @@ export default function App() {
 
   const openJournal = () => {
     if (!confirmLeaveReading()) return
+    setView('journal')
+  }
+
+  const openJournalEntry = (id: string) => {
+    if (!confirmLeaveReading()) return
+    window.history.pushState(
+      { view: 'journal', entryId: id },
+      '',
+      `#/journal/${encodeURIComponent(id)}`,
+    )
     setView('journal')
   }
 
@@ -268,6 +284,18 @@ export default function App() {
   const handleDeleteEntry = async (id: string) => {
     await deleteEntry(id)
     setEntries((previous) => previous.filter((item) => item.id !== id))
+  }
+
+  const handleImportEntries = async (imported: JournalEntry[]) => {
+    const existing = new Set(entries.map((entry) => entry.id))
+    const added = imported.filter((entry) => !existing.has(entry.id)).length
+    await saveEntries(imported)
+    setEntries((previous) => {
+      const merged = new Map(previous.map((entry) => [entry.id, entry]))
+      imported.forEach((entry) => merged.set(entry.id, entry))
+      return [...merged.values()].sort((a, b) => b.createdAt - a.createdAt)
+    })
+    return { added, updated: imported.length - added }
   }
 
   const persistSettings = (next: Settings) => {
@@ -335,12 +363,14 @@ export default function App() {
         </header>
 
         <main className="view-shell" key={view}>
+          <Suspense fallback={<div className="view-loading" aria-hidden="true" />}>
           {view === 'home' && (
             <HomeView
               settings={settings}
-              latestEntry={entries[0]}
+              entries={entries}
               onStart={beginDraw}
               onOpenJournal={openJournal}
+              onOpenEntry={openJournalEntry}
               onOpenSettings={() => setSettingsOpen(true)}
             />
           )}
@@ -379,8 +409,10 @@ export default function App() {
               entries={entries}
               onBack={goHome}
               onOpenJournal={openJournal}
+              onImport={handleImportEntries}
             />
           )}
+          </Suspense>
         </main>
 
         <footer className="site-foot">
@@ -397,14 +429,18 @@ export default function App() {
         </div>
       )}
 
-      <SettingsModal
-        open={settingsOpen}
-        settings={settings}
-        onClose={closeSettings}
-        onSave={handleSaveSettings}
-        onPersist={persistSettings}
-        onThemePreview={applyTheme}
-      />
+      {settingsOpen && (
+        <Suspense fallback={null}>
+          <SettingsModal
+            open={settingsOpen}
+            settings={settings}
+            onClose={closeSettings}
+            onSave={handleSaveSettings}
+            onPersist={persistSettings}
+            onThemePreview={applyTheme}
+          />
+        </Suspense>
+      )}
       {safetyGate && (
         <SafetyGate
           key={safetyGate.kind}

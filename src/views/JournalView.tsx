@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { JournalEntry, Settings } from '../types'
 import { demoRevisit } from '../lib/demo'
 import { formatDate } from '../lib/format'
@@ -39,6 +39,11 @@ export default function JournalView({
   const [previewId, setPreviewId] = useState<string | null>(
     entries[0]?.id ?? null,
   )
+  const [query, setQuery] = useState('')
+  const [ownerFilter, setOwnerFilter] = useState<'all' | 'self' | 'other'>(
+    'all',
+  )
+  const [onlyRevisited, setOnlyRevisited] = useState(false)
   const [revisitText, setRevisitText] = useState('')
   const [revisitBusy, setRevisitBusy] = useState(false)
   const [revisitError, setRevisitError] = useState('')
@@ -46,6 +51,55 @@ export default function JournalView({
   const revisitBusyRef = useRef(false)
 
   const selected = entries.find((entry) => entry.id === selectedId) ?? null
+  const filteredEntries = useMemo(() => {
+    const keyword = query.trim().toLowerCase()
+    return entries.filter((entry) => {
+      if (ownerFilter === 'self' && entry.querent) return false
+      if (ownerFilter === 'other' && !entry.querent) return false
+      const revisits = revisitsOf(entry)
+      if (onlyRevisited && revisits.length === 0) return false
+      if (!keyword) return true
+      const haystack = [
+        entry.question,
+        entry.querent ?? '',
+        entry.insight.title,
+        entry.insight.mirror,
+        entry.insight.pattern,
+        entry.insight.invitation,
+        entry.insight.keywords.join(' '),
+        entry.cards
+          .map(
+            (drawn) =>
+              `${drawn.card.name} ${drawn.card.nameEn} ${drawn.card.roman}`,
+          )
+          .join(' '),
+        revisits.map((revisit) => `${revisit.answer} ${revisit.note}`).join(' '),
+      ]
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(keyword)
+    })
+  }, [entries, ownerFilter, onlyRevisited, query])
+
+  const previewEntry = useMemo(
+    () =>
+      filteredEntries.find((entry) => entry.id === previewId) ??
+      filteredEntries[ringPage * RING_PAGE_SIZE] ??
+      null,
+    [filteredEntries, previewId, ringPage],
+  )
+
+  const resetRing = () => {
+    setRingPage(0)
+    setPreviewId(null)
+  }
+
+  const clearFilters = () => {
+    setQuery('')
+    setOwnerFilter('all')
+    setOnlyRevisited(false)
+    resetRing()
+  }
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
@@ -60,22 +114,6 @@ export default function JournalView({
   useEffect(() => {
     document.title = selected ? '照见 · 月鉴' : '时间线 · 月鉴'
   }, [selected])
-
-  useEffect(() => {
-    const lastPage = Math.max(
-      0,
-      Math.ceil(entries.length / RING_PAGE_SIZE) - 1,
-    )
-    if (ringPage > lastPage) {
-      setRingPage(lastPage)
-      const first = entries[lastPage * RING_PAGE_SIZE]
-      if (first) setPreviewId(first.id)
-      return
-    }
-    if (!entries.some((entry) => entry.id === previewId)) {
-      setPreviewId(entries[0]?.id ?? null)
-    }
-  }, [entries, ringPage, previewId])
 
   const openEntry = (entry: JournalEntry) => {
     setSelectedId(entry.id)
@@ -97,11 +135,11 @@ export default function JournalView({
   const changeRingPage = (next: number) => {
     const lastPage = Math.max(
       0,
-      Math.ceil(entries.length / RING_PAGE_SIZE) - 1,
+      Math.ceil(filteredEntries.length / RING_PAGE_SIZE) - 1,
     )
     const page = Math.min(Math.max(next, 0), lastPage)
     setRingPage(page)
-    const first = entries[page * RING_PAGE_SIZE]
+    const first = filteredEntries[page * RING_PAGE_SIZE]
     if (first) setPreviewId(first.id)
   }
 
@@ -218,7 +256,7 @@ export default function JournalView({
                       key={`${item.at}-${index}`}
                     >
                       <span className="eyebrow">
-                        {formatDate(item.at)} 的你写道
+                        {formatDate(item.at)}，你写道
                       </span>
                       <p className="revisit-answer">“{item.answer}”</p>
                       <div className="revisit-note">
@@ -273,6 +311,77 @@ export default function JournalView({
         <span className="journal-count">{entries.length} 次</span>
       </header>
 
+      {entries.length > 0 && (
+        <div className="journal-search">
+          <label className="journal-search-field">
+            <span className="journal-search-glyph" aria-hidden="true">
+              ⌕
+            </span>
+            <input
+              type="search"
+              value={query}
+              placeholder="搜索问题、牌名、关键词或回访"
+              aria-label="搜索自省记录"
+              onChange={(event) => {
+                setQuery(event.target.value)
+                resetRing()
+              }}
+            />
+            {query && (
+              <button
+                type="button"
+                className="journal-search-clear"
+                aria-label="清空搜索"
+                onClick={() => {
+                  setQuery('')
+                  resetRing()
+                }}
+              >
+                ×
+              </button>
+            )}
+          </label>
+          <div className="journal-filters" role="group" aria-label="筛选记录">
+            {(
+              [
+                ['all', '全部'],
+                ['self', '自己'],
+                ['other', '为他人'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={`journal-filter-chip ${
+                  ownerFilter === value ? 'is-active' : ''
+                }`}
+                aria-pressed={ownerFilter === value}
+                onClick={() => {
+                  setOwnerFilter(value)
+                  resetRing()
+                }}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`journal-filter-chip ${onlyRevisited ? 'is-active' : ''}`}
+              aria-pressed={onlyRevisited}
+              onClick={() => {
+                setOnlyRevisited((value) => !value)
+                resetRing()
+              }}
+            >
+              有回访
+            </button>
+          </div>
+          <span className="journal-search-count">
+            {filteredEntries.length} / {entries.length} 条
+          </span>
+        </div>
+      )}
+
       {entries.length === 0 ? (
         <div className="journal-empty">
           <CelestialEmpty variant="timeline" />
@@ -282,15 +391,57 @@ export default function JournalView({
             去抽一次牌
           </button>
         </div>
+      ) : filteredEntries.length === 0 ? (
+        <div className="journal-search-empty">
+          <p>没有找到符合条件的记录。</p>
+          <button type="button" className="ghost-btn small" onClick={clearFilters}>
+            清除筛选
+          </button>
+        </div>
       ) : (
-        <RingTimeline
-          entries={entries}
-          page={ringPage}
-          previewId={previewId}
-          onPageChange={changeRingPage}
-          onPreview={setPreviewId}
-          onOpen={openEntry}
-        />
+        <>
+          <RingTimeline
+            entries={filteredEntries}
+            page={ringPage}
+            previewId={previewId}
+            onPageChange={changeRingPage}
+            onPreview={setPreviewId}
+            onOpen={openEntry}
+          />
+          {previewEntry && (
+            <aside className="journal-preview" aria-live="polite">
+              <div className="journal-preview-meta">
+                <span className="eyebrow">
+                  {formatDate(previewEntry.createdAt)}
+                  {previewEntry.querent
+                    ? ` · 为「${previewEntry.querent}」`
+                    : ' · 自己的照见'}
+                </span>
+                <span className="journal-preview-cards">
+                  {previewEntry.cards.map((drawn) => drawn.card.name).join(' · ')}
+                </span>
+              </div>
+              <h3>{previewEntry.question}</h3>
+              <p className="journal-preview-title">
+                {previewEntry.insight.title}
+              </p>
+              <div className="journal-preview-foot">
+                <div className="journal-preview-tags">
+                  {previewEntry.insight.keywords.slice(0, 3).map((keyword) => (
+                    <span key={keyword}>{keyword}</span>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="ghost-btn small"
+                  onClick={() => openEntry(previewEntry)}
+                >
+                  打开这次照见 →
+                </button>
+              </div>
+            </aside>
+          )}
+        </>
       )}
     </section>
   )

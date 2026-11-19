@@ -12,18 +12,19 @@ export default function CameraModal({ open, onClose, onCapture }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const trapRef = useFocusTrap<HTMLDivElement>(open)
   const [ready, setReady] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() =>
+    navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function'
+      ? ''
+      : '当前页面无法调用摄像头，请用 HTTPS 或 localhost 打开后再试。',
+  )
 
   useEffect(() => {
     if (!open) return
     let stream: MediaStream | null = null
     let cancelled = false
-    setReady(false)
-    setError('')
 
     const mediaDevices = navigator.mediaDevices
     if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') {
-      setError('当前页面无法调用摄像头，请用 HTTPS 或 localhost 打开后再试。')
       return
     }
 

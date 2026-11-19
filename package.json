@@ -7,18 +7,24 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "lint": "oxlint .",
     "test:coverage": "node scripts/coverage-test.mjs",
-    "stress:local": "node scripts/stress-test.mjs --cases 50000"
+    "stress:local": "node scripts/stress-test.mjs --cases 50000",
+    "eval:reading": "node scripts/reading-eval.mjs",
+    "eval:recordings": "node scripts/reading-eval.mjs --recordings",
+    "eval:demo": "node scripts/reading-eval.mjs --demo"
   },
   "dependencies": {
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@oxlint/binding-win32-x64-msvc": "^1.94.0",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "oxlint": "^1.94.0",
     "typescript": "~5.8.3",
     "vite": "^6.3.5"
   }

@@ -12,16 +12,12 @@ interface Props {
 export default function SafetyGate({ querent, kind, onClose }: Props) {
   const trapRef = useFocusTrap<HTMLDivElement>(true)
   const content = SAFETY_COPY[kind]
-  const [comfortIndex, setComfortIndex] = useState(() =>
+  const [comfortIndex] = useState(() =>
     Math.floor(Math.random() * content.comforts.length),
   )
+  const [stepsExpanded, setStepsExpanded] = useState(false)
   const comfort = content.comforts[comfortIndex] ?? content.comforts[0]
-
-  useEffect(() => {
-    setComfortIndex(
-      Math.floor(Math.random() * SAFETY_COPY[kind].comforts.length),
-    )
-  }, [kind])
+  const visibleSteps = stepsExpanded ? content.steps : content.steps.slice(0, 3)
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -51,10 +47,20 @@ export default function SafetyGate({ querent, kind, onClose }: Props) {
         ref={trapRef}
         tabIndex={-1}
       >
+        <div className="safety-topbar">
+          <span className="eyebrow">安全优先 · SAFETY FIRST</span>
+          <button
+            type="button"
+            className="icon-btn safety-close"
+            onClick={onClose}
+            aria-label="我暂时安全，关闭安全提示"
+          >
+            ×
+          </button>
+        </div>
         <span className="safety-emblem" aria-hidden="true">
           ✦
         </span>
-        <span className="eyebrow">安全优先 · SAFETY FIRST</span>
         <p className="safety-comfort">{comfort}</p>
         <h2 id="safety-title">{content.title}</h2>
         <p id="safety-description" className="safety-lead">
@@ -82,10 +88,22 @@ export default function SafetyGate({ querent, kind, onClose }: Props) {
         </div>
 
         <ul className="safety-steps">
-          {content.steps.map((step) => (
+          {visibleSteps.map((step) => (
             <li key={step}>{step}</li>
           ))}
         </ul>
+        {content.steps.length > 3 && (
+          <button
+            type="button"
+            className="text-btn small safety-more"
+            aria-expanded={stepsExpanded}
+            onClick={() => setStepsExpanded((value) => !value)}
+          >
+            {stepsExpanded
+              ? '收起建议'
+              : `展开其余 ${content.steps.length - 3} 条建议`}
+          </button>
+        )}
 
         <p className="safety-close-note">{content.close}</p>
         <button type="button" className="ghost-btn safety-return" onClick={onClose}>

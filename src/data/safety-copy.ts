@@ -243,5 +243,7 @@ export function safetySuggestions(kind: SafetyKind): string[] {
 
 export function safetyRevisit(kind: SafetyKind, answer: string): string {
   const content = SAFETY_COPY[kind]
-  return `你此刻的安全仍然最重要。${pickSafetyComfort(kind)} 你这次写到「${answer}」。${content.close} 如果危险仍在，请拨打 110 / 120，或联系 12356 与当地援助。`
+  const quoted = answer.trim().replace(/[。！？!?；;，,、\s]+$/, '')
+  const echo = quoted ? ` 你这次写道：${quoted}。` : ''
+  return `你此刻的安全仍然最重要。${pickSafetyComfort(kind)}${echo} ${content.close} 如果危险仍在，请拨打 110 / 120，或联系 12356 与当地援助。`
 }
