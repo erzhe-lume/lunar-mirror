@@ -220,11 +220,16 @@ function openDb(): Promise<IDBDatabase> {
   return opened
 }
 
+type LegacyProbe =
+  | { status: 'missing' }
+  | { status: 'ok'; rows: JournalEntry[] }
+  | { status: 'error' }
+
 /** 只读探测旧库；旧库不存在时取消建库，不留空壳。 */
-function readLegacyEntries(): Promise<JournalEntry[]> {
+function readLegacyEntries(): Promise<LegacyProbe> {
   return new Promise((resolve) => {
     let settled = false
-    const finish = (value: JournalEntry[]) => {
+    const finish = (value: LegacyProbe) => {
       if (settled) return
       settled = true
       resolve(value)
@@ -233,20 +238,20 @@ function readLegacyEntries(): Promise<JournalEntry[]> {
     try {
       probe = indexedDB.open(LEGACY_DB_NAME)
     } catch {
-      finish([])
+      finish({ status: 'error' })
       return
     }
     probe.onupgradeneeded = () => {
       probe.transaction?.abort()
-      finish([])
+      finish({ status: 'missing' })
     }
-    probe.onerror = () => finish([])
-    probe.onblocked = () => finish([])
+    probe.onerror = () => finish({ status: 'error' })
+    probe.onblocked = () => finish({ status: 'error' })
     probe.onsuccess = () => {
       const db = probe.result
       if (!db.objectStoreNames.contains(STORE)) {
         db.close()
-        finish([])
+        finish({ status: 'ok', rows: [] })
         return
       }
       try {
@@ -254,31 +259,34 @@ function readLegacyEntries(): Promise<JournalEntry[]> {
         const request = tx.objectStore(STORE).getAll()
         request.onsuccess = () => {
           db.close()
-          finish(request.result as JournalEntry[])
+          finish({ status: 'ok', rows: request.result as JournalEntry[] })
         }
         request.onerror = () => {
           db.close()
-          finish([])
+          finish({ status: 'error' })
         }
       } catch {
         db.close()
-        finish([])
+        finish({ status: 'error' })
       }
     }
   })
 }
 
-function writeEntries(db: IDBDatabase, rows: JournalEntry[]): Promise<void> {
+function writeEntries(
+  db: IDBDatabase,
+  rows: JournalEntry[],
+): Promise<boolean> {
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(STORE, 'readwrite')
       const store = tx.objectStore(STORE)
       rows.forEach((row) => store.put(row))
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => resolve()
-      tx.onabort = () => resolve()
+      tx.oncomplete = () => resolve(true)
+      tx.onerror = () => resolve(false)
+      tx.onabort = () => resolve(false)
     } catch {
-      resolve()
+      resolve(false)
     }
   })
 }
@@ -287,7 +295,7 @@ let legacyMigration: Promise<void> | null = null
 
 /**
  * 把旧的 tarot-mirror 库里的记录搬进 lunar-mirror 库，只搬一次。
- * 旧库保持原样，put 幂等，中途失败下次启动会重试。
+ * 旧库不存在时直接记下「已迁移」；读写出错时不记，下次启动重试。
  */
 function migrateLegacyEntries(db: IDBDatabase): Promise<void> {
   if (legacyMigration) return legacyMigration
@@ -297,12 +305,16 @@ function migrateLegacyEntries(db: IDBDatabase): Promise<void> {
     } catch {
       return
     }
-    const rows = await readLegacyEntries()
-    if (rows.length > 0) await writeEntries(db, rows)
+    const probe = await readLegacyEntries()
+    if (probe.status === 'error') return
+    if (probe.status === 'ok' && probe.rows.length > 0) {
+      const written = await writeEntries(db, probe.rows)
+      if (!written) return
+    }
     try {
       localStorage.setItem(MIGRATED_KEY, '1')
     } catch {
-      // 标记写不进去时下次启动再搬一遍，结果一致。
+      // 标记写不进去时下次启动再搬一遍，put 幂等，结果一致。
     }
   })()
   return legacyMigration
