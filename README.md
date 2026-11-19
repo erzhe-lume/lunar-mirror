@@ -156,9 +156,9 @@ npm run stress:local
 npm run stress:local -- --cases 100000
 ```
 
-> 应用运行时的记录不是 JSON 文件：自省记录保存在浏览器 IndexedDB 的 `tarot-mirror` 数据库、`entries` store 中；设置、导航与进行中的解读保存在 localStorage 的 `tarot-mirror.settings` / `tarot-mirror.nav` / `tarot-mirror.reading` 键。它们位于浏览器配置目录内，由浏览器管理。
+> 应用运行时的记录不是 JSON 文件：自省记录保存在浏览器 IndexedDB 的 `lunar-mirror` 数据库、`entries` store 中；设置、导航与进行中的解读保存在 localStorage 的 `lunar-mirror.settings` / `lunar-mirror.nav` / `lunar-mirror.reading` 键。它们位于浏览器配置目录内，由浏览器管理。
 >
-> 项目改名为「月鉴 · Lunar Mirror」后，这些内部标识符仍沿用 `tarot-mirror`，`package.json` 的 `name` 也没改 —— 目的是让改名之前保存的记录照常读出来。
+> 早期版本用的是 `tarot-mirror` 这套名字。首次打开时会把旧库里的记录复制进 `lunar-mirror`，把旧的 `tarot-mirror.*` 键的值抄到新键，旧库与旧键都保留着；复制成功后记下 `lunar-mirror.migrated`，之后不再重复。
 
 ## 设计取向
 

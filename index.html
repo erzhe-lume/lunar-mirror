@@ -25,7 +25,9 @@
       ;(() => {
         try {
           const saved = JSON.parse(
-            localStorage.getItem('tarot-mirror.settings') || '{}',
+            localStorage.getItem('lunar-mirror.settings') ||
+              localStorage.getItem('tarot-mirror.settings') ||
+              '{}',
           )
           if (saved.theme === 'verdant' || saved.theme === 'abyss') {
             document.documentElement.dataset.theme = saved.theme

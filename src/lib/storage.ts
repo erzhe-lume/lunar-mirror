@@ -10,11 +10,38 @@ import type {
 import { DEFAULT_PROVIDER, defaultBaseFor } from './providers'
 import { isThemeId } from './theme'
 
-const DB_NAME = 'tarot-mirror'
+const DB_NAME = 'lunar-mirror'
+const LEGACY_DB_NAME = 'tarot-mirror'
 const STORE = 'entries'
-const SETTINGS_KEY = 'tarot-mirror.settings'
-const NAV_KEY = 'tarot-mirror.nav'
-const READING_KEY = 'tarot-mirror.reading'
+const KEY_PREFIX = 'lunar-mirror'
+const LEGACY_KEY_PREFIX = 'tarot-mirror'
+const SETTINGS_KEY = `${KEY_PREFIX}.settings`
+const NAV_KEY = `${KEY_PREFIX}.nav`
+const READING_KEY = `${KEY_PREFIX}.reading`
+const MIGRATED_KEY = `${KEY_PREFIX}.migrated`
+
+/**
+ * 读新前缀的键；没有时回退到 tarot-mirror.* 并把旧值复制到新键。
+ * 旧键保留不删，用旧版本页面打开时仍能读到设置与草稿。
+ */
+function readStore(key: string): string | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw !== null) return raw
+    const legacy = localStorage.getItem(
+      key.replace(KEY_PREFIX, LEGACY_KEY_PREFIX),
+    )
+    if (legacy === null) return null
+    try {
+      localStorage.setItem(key, legacy)
+    } catch {
+      // 复制失败时仍返回旧值，本次读取不受影响。
+    }
+    return legacy
+  } catch {
+    return null
+  }
+}
 
 export type PersistedView = 'home' | 'draw' | 'reading' | 'journal' | 'mirror'
 
@@ -60,7 +87,7 @@ function readingSignature(question: string, cards: DrawnCard[]): string {
 
 export function loadNavigation(): NavigationSnapshot | null {
   try {
-    const raw = localStorage.getItem(NAV_KEY)
+    const raw = readStore(NAV_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<NavigationSnapshot>
     const views: PersistedView[] = ['home', 'draw', 'reading', 'journal', 'mirror']
@@ -92,6 +119,7 @@ export function saveNavigation(snapshot: NavigationSnapshot): void {
 export function clearNavigation(): void {
   try {
     localStorage.removeItem(NAV_KEY)
+    localStorage.removeItem(NAV_KEY.replace(KEY_PREFIX, LEGACY_KEY_PREFIX))
   } catch {
     // ignore
   }
@@ -102,7 +130,7 @@ export function loadReadingSnapshot(
   cards: DrawnCard[],
 ): ReadingSnapshot | null {
   try {
-    const raw = localStorage.getItem(READING_KEY)
+    const raw = readStore(READING_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<ReadingSnapshot>
     if (
@@ -148,6 +176,7 @@ export function saveReadingSnapshot(
 export function clearReadingSnapshot(): void {
   try {
     localStorage.removeItem(READING_KEY)
+    localStorage.removeItem(READING_KEY.replace(KEY_PREFIX, LEGACY_KEY_PREFIX))
   } catch {
     // ignore
   }
@@ -191,8 +220,97 @@ function openDb(): Promise<IDBDatabase> {
   return opened
 }
 
+/** 只读探测旧库；旧库不存在时取消建库，不留空壳。 */
+function readLegacyEntries(): Promise<JournalEntry[]> {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (value: JournalEntry[]) => {
+      if (settled) return
+      settled = true
+      resolve(value)
+    }
+    let probe: IDBOpenDBRequest
+    try {
+      probe = indexedDB.open(LEGACY_DB_NAME)
+    } catch {
+      finish([])
+      return
+    }
+    probe.onupgradeneeded = () => {
+      probe.transaction?.abort()
+      finish([])
+    }
+    probe.onerror = () => finish([])
+    probe.onblocked = () => finish([])
+    probe.onsuccess = () => {
+      const db = probe.result
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.close()
+        finish([])
+        return
+      }
+      try {
+        const tx = db.transaction(STORE, 'readonly')
+        const request = tx.objectStore(STORE).getAll()
+        request.onsuccess = () => {
+          db.close()
+          finish(request.result as JournalEntry[])
+        }
+        request.onerror = () => {
+          db.close()
+          finish([])
+        }
+      } catch {
+        db.close()
+        finish([])
+      }
+    }
+  })
+}
+
+function writeEntries(db: IDBDatabase, rows: JournalEntry[]): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE, 'readwrite')
+      const store = tx.objectStore(STORE)
+      rows.forEach((row) => store.put(row))
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => resolve()
+      tx.onabort = () => resolve()
+    } catch {
+      resolve()
+    }
+  })
+}
+
+let legacyMigration: Promise<void> | null = null
+
+/**
+ * 把旧的 tarot-mirror 库里的记录搬进 lunar-mirror 库，只搬一次。
+ * 旧库保持原样，put 幂等，中途失败下次启动会重试。
+ */
+function migrateLegacyEntries(db: IDBDatabase): Promise<void> {
+  if (legacyMigration) return legacyMigration
+  legacyMigration = (async () => {
+    try {
+      if (localStorage.getItem(MIGRATED_KEY) === '1') return
+    } catch {
+      return
+    }
+    const rows = await readLegacyEntries()
+    if (rows.length > 0) await writeEntries(db, rows)
+    try {
+      localStorage.setItem(MIGRATED_KEY, '1')
+    } catch {
+      // 标记写不进去时下次启动再搬一遍，结果一致。
+    }
+  })()
+  return legacyMigration
+}
+
 export async function listEntries(): Promise<JournalEntry[]> {
   const db = await openDb()
+  await migrateLegacyEntries(db)
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readonly')
     const request = tx.objectStore(STORE).getAll()
@@ -269,7 +387,7 @@ function readProtocol(value: unknown): ApiProtocol {
 
 export function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
+    const raw = readStore(SETTINGS_KEY)
     if (!raw) return DEFAULT_SETTINGS
     const parsed = JSON.parse(raw) as Partial<Settings>
     const apiProtocol = readProtocol(parsed.apiProtocol)
