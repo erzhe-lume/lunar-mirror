@@ -1,0 +1,138 @@
+export interface PrivateImage {
+  id: string
+  name: string
+  nameEn: string
+  symbol: string
+  keywords: [string, string, string]
+  prompt: string
+  triggers: string[]
+}
+
+export const PRIVATE_IMAGES: PrivateImage[] = [
+  {
+    id: 'unsent-letter',
+    name: '未寄出的信',
+    nameEn: 'THE UNSENT LETTER',
+    symbol: '✉︎',
+    keywords: ['没有说出口', '等待回音', '仍然在意'],
+    prompt: '这封信现在最想被谁读到？',
+    triggers: ['信', '说', '没说', '表达', '开口', '沉默', '等待', '回音', '联系', '消息', '想念'],
+  },
+  {
+    id: 'empty-room',
+    name: '空房间',
+    nameEn: 'THE EMPTY ROOM',
+    symbol: '⌂',
+    keywords: ['留下的形状', '一个人的回声', '还没放下'],
+    prompt: '房间里最明显的是谁不在？',
+    triggers: ['空', '房间', '家', '离开', '一个人', '独处', '回来', '搬', '留下'],
+  },
+  {
+    id: 'before-rain',
+    name: '雨停之前',
+    nameEn: 'BEFORE THE RAIN STOPS',
+    symbol: '☂︎',
+    keywords: ['先躲一会儿', '潮湿的心事', '等天晴'],
+    prompt: '如果雨还要下一会儿，你想怎么照顾自己？',
+    triggers: ['雨', '天气', '阴', '低落', '等', '撑', '淋', '伞', '冷', '潮湿'],
+  },
+  {
+    id: 'chair-window',
+    name: '窗边的椅子',
+    nameEn: 'THE CHAIR BY THE WINDOW',
+    symbol: '⊓',
+    keywords: ['坐着不动', '看见外面', '还没起身'],
+    prompt: '你坐在那里时，最想看见什么？',
+    triggers: ['窗', '椅子', '坐', '看', '外面', '等', '观望', '停留', '远处'],
+  },
+  {
+    id: 'leave-light',
+    name: '留一盏灯',
+    nameEn: 'LEAVE A LIGHT ON',
+    symbol: '✦',
+    keywords: ['给谁留的', '怕黑', '还会回来'],
+    prompt: '这盏灯是为谁留的？',
+    triggers: ['灯', '光', '夜', '回家', '等', '怕黑', '留', '回来', '晚'],
+  },
+  {
+    id: 'old-key',
+    name: '旧钥匙',
+    nameEn: 'THE OLD KEY',
+    symbol: '⚿',
+    keywords: ['打不开的门', '还在身上', '不肯丢'],
+    prompt: '你还带着它，是因为哪扇门？',
+    triggers: ['钥匙', '门', '锁', '旧', '丢', '留', '打开', '关', '进不去'],
+  },
+  {
+    id: 'half-glass',
+    name: '半杯水',
+    nameEn: 'THE HALF GLASS',
+    symbol: '◒',
+    keywords: ['剩下的一半', '已经喝掉的', '够不够'],
+    prompt: '你看见的是剩下的一半，还是已经喝掉的那一半？',
+    triggers: ['水', '杯', '一半', '够', '空', '满', '剩', '渴', '不足'],
+  },
+  {
+    id: 'stopped-clock',
+    name: '停摆的钟',
+    nameEn: 'THE STOPPED CLOCK',
+    symbol: '◷',
+    keywords: ['停在某刻', '时间没走', '还在等'],
+    prompt: '如果钟重新走，你希望它先走向哪里？',
+    triggers: ['时间', '钟', '停', '过去', '等', '慢', '快', '来不及', '以后'],
+  },
+  {
+    id: 'unsent-photo',
+    name: '没有寄出的照片',
+    nameEn: 'THE UNSENT PHOTO',
+    symbol: '▧',
+    keywords: ['被留下的瞬间', '不敢回看', '仍然鲜活'],
+    prompt: '这张照片里，有什么是你还没敢看的？',
+    triggers: ['照片', '拍', '看', '回忆', '过去', '瞬间', '镜头', '留', '删'],
+  },
+  {
+    id: 'open-window',
+    name: '一扇没关的窗',
+    nameEn: 'THE OPEN WINDOW',
+    symbol: '▤',
+    keywords: ['风还在进来', '没有关严', '留了缝'],
+    prompt: '这条缝是你留的，还是别人留的？',
+    triggers: ['窗', '风', '关', '缝', '开', '进来', '冷', '透气', '边界'],
+  },
+  {
+    id: 'long-way',
+    name: '绕远的路',
+    nameEn: 'THE LONG WAY',
+    symbol: '⌇',
+    keywords: ['没有直达', '多走了几步', '沿途看见'],
+    prompt: '这条远路让你看见了什么？',
+    triggers: ['路', '远', '绕', '走', '迷路', '方向', '回头', '到达', '选择'],
+  },
+  {
+    id: 'borrowed-coat',
+    name: '借来的外套',
+    nameEn: 'THE BORROWED COAT',
+    symbol: '◈',
+    keywords: ['暂时取暖', '不是自己的', '还可以还'],
+    prompt: '这件外套让你想起谁的温度？',
+    triggers: ['外套', '衣', '借', '穿', '暖', '冷', '还', '保护', '依靠'],
+  },
+  {
+    id: 'echo',
+    name: '回声',
+    nameEn: 'THE ECHO',
+    symbol: '◎',
+    keywords: ['说出去又回来', '被听见', '还在响'],
+    prompt: '你听见的是自己的声音，还是别人的回应？',
+    triggers: ['回声', '听', '声音', '说', '回应', '空', '响', '重复', '理解'],
+  },
+  {
+    id: 'door-light',
+    name: '门缝里的光',
+    nameEn: 'LIGHT THROUGH THE DOOR',
+    symbol: '☼︎',
+    keywords: ['没有全开', '已经足够', '在门口'],
+    prompt: '你站在门口，想进去还是想再等等？',
+    triggers: ['门', '光', '缝', '进', '退', '等', '开', '关', '机会'],
+  },
+]

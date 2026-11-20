@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { Orientation, TarotCard as TarotCardData } from '../types'
 import CardBackArt from './CardBackArt'
@@ -7,6 +8,7 @@ interface Props {
   orientation?: Orientation
   faceUp?: boolean
   size?: 'xs' | 'sm' | 'md' | 'lg'
+  private?: boolean
   className?: string
   style?: CSSProperties
 }
@@ -16,19 +18,32 @@ export default function TarotCard({
   orientation = 'upright',
   faceUp = false,
   size = 'md',
+  private: privateCard = false,
   className = '',
   style,
 }: Props) {
   const showFront = Boolean(card) && faceUp
+  const isPrivate = privateCard || card?.private === true
   const keywords = card
     ? orientation === 'upright'
       ? card.upright.keywords
       : card.reversed.keywords
     : []
+  const [shownFace, setShownFace] = useState<'front' | 'back'>(showFront ? 'front' : 'back')
+
+  useEffect(() => {
+    if ((shownFace === 'front') === showFront) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const timer = window.setTimeout(
+      () => setShownFace(showFront ? 'front' : 'back'),
+      reduced ? 0 : 400,
+    )
+    return () => window.clearTimeout(timer)
+  }, [showFront, shownFace])
 
   return (
     <div
-      className={`tarot-card tarot-${size} ${showFront ? 'is-up' : ''} ${className}`}
+      className={`tarot-card tarot-${size} ${showFront ? 'is-up' : ''} ${shownFace === 'front' ? 'showing-front' : 'showing-back'} ${isPrivate ? 'is-private' : ''} ${className}`}
       style={style}
       aria-hidden={!showFront}
     >
@@ -36,6 +51,7 @@ export default function TarotCard({
         <div className="tarot-side tarot-back">
           <CardBackArt />
           <span className="back-glow" aria-hidden="true" />
+          {isPrivate && <span className="private-back-seal" aria-hidden="true">79</span>}
         </div>
         <div className="tarot-side tarot-front">
           {card && (
@@ -61,9 +77,15 @@ export default function TarotCard({
                 <i />
               </span>
               <span className="card-keywords">{keywords.slice(0, 3).join(' · ')}</span>
-              <span className="card-brand">LUNAR MIRROR</span>
-              <span className={`card-badge ${orientation}`}>
-                {orientation === 'upright' ? '↑ 正位' : '↓ 逆位'}
+              <span className="card-brand">
+                {isPrivate ? 'YOUR 79TH' : 'LUNAR MIRROR'}
+              </span>
+              <span className={`card-badge ${isPrivate ? 'private' : orientation}`}>
+                {isPrivate
+                  ? '第79张'
+                  : orientation === 'upright'
+                    ? '↑ 正位'
+                    : '↓ 逆位'}
               </span>
             </div>
           )}

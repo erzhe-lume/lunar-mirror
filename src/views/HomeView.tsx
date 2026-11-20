@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import type { JournalEntry, Settings } from '../types'
+import type { JournalEntry, PrivateCard, Settings } from '../types'
 import { MAJOR_ARCANA } from '../data/tarot'
 import { formatShortDate } from '../lib/format'
 import { dueRevisits } from '../lib/revisits'
@@ -13,6 +13,9 @@ import TarotCard from '../components/TarotCard'
 interface Props {
   settings: Settings
   entries: JournalEntry[]
+  privateCard: PrivateCard | null
+  privateEligible: boolean
+  onOpenPrivateCard: () => void
   onStart: (question: string, snapshot?: string, querent?: string) => void
   onOpenJournal: () => void
   onOpenEntry: (id: string) => void
@@ -25,6 +28,9 @@ const HERO_OFFSETS = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
 export default function HomeView({
   settings,
   entries,
+  privateCard,
+  privateEligible,
+  onOpenPrivateCard,
   onStart,
   onOpenJournal,
   onOpenEntry,
@@ -243,6 +249,27 @@ export default function HomeView({
       </div>
 
         <aside className="home-aside">
+          {(privateCard || privateEligible) && (
+            <button
+              type="button"
+              className="home-aside-note home-aside-blank home-private-note"
+              onClick={onOpenPrivateCard}
+            >
+              <span className="eyebrow">
+                {privateCard ? '你的第79张 · PRIVATE CARD' : '第79张 · PRIVATE CARD'}
+              </span>
+              <p>
+                {privateCard
+                  ? privateCard.name
+                  : '三次照见之后，可以从你写下的意象里长出一张只属于你的牌。'}
+              </p>
+              <span className="blank-action">
+                <span>{privateCard ? '查看我的牌' : '让它长出来'}</span>
+                <i aria-hidden="true" />
+                <span aria-hidden="true">→</span>
+              </span>
+            </button>
+          )}
           <button
             type="button"
             className="home-aside-note home-aside-blank"

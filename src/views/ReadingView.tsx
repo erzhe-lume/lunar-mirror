@@ -4,6 +4,7 @@ import type {
   DrawnCard,
   Insight,
   JournalEntry,
+  PrivateCard,
   Settings,
 } from '../types'
 import { POSITIONS } from '../types'
@@ -29,13 +30,14 @@ import {
 import { READING_LENSES, type ReadingLens } from '../lib/lenses'
 import { shapeReading } from '../lib/reading'
 import { playInsight } from '../lib/sound'
-import { speak, stopSpeaking } from '../lib/speech'
+import { speak, stopSpeaking, unlockSpeechAudio } from '../lib/speech'
 import {
   loadReadingSnapshot,
   saveReadingSnapshot,
 } from '../lib/storage'
 import InsightCard from '../components/InsightCard'
 import SealMark from '../components/SealMark'
+import SpreadRelationMap from '../components/SpreadRelationMap'
 import TarotCard from '../components/TarotCard'
 
 interface Props {
@@ -44,6 +46,9 @@ interface Props {
   querent?: string
   snapshot?: string
   cards: DrawnCard[]
+  privateCard: PrivateCard | null
+  privateEligible: boolean
+  onOpenPrivateCard: () => void
   onSaved: (entry: JournalEntry) => void
   onHome: () => void
   onJournal: () => void
@@ -67,6 +72,9 @@ export default function ReadingView({
   querent,
   snapshot,
   cards,
+  privateCard,
+  privateEligible,
+  onOpenPrivateCard,
   onSaved,
   onHome,
   onJournal,
@@ -195,7 +203,12 @@ export default function ReadingView({
       ...previous,
       { role: 'assistant', content, at: Date.now() },
     ])
-    if (ttsRef.current) speak(content, settings.voiceURI)
+    if (ttsRef.current) {
+      speak(content, settings.voiceURI, {
+        apiBase: settings.apiBase,
+        apiKey: settings.apiKey,
+      })
+    }
   }
 
   const handleChatScroll = () => {
@@ -260,7 +273,12 @@ export default function ReadingView({
               : message,
           ),
         )
-        if (ttsRef.current) speak(full, settings.voiceURI)
+        if (ttsRef.current) {
+          speak(full, settings.voiceURI, {
+            apiBase: settings.apiBase,
+            apiKey: settings.apiKey,
+          })
+        }
       },
       cancel: () => {
         if (frame) window.cancelAnimationFrame(frame)
@@ -581,13 +599,20 @@ export default function ReadingView({
                         {keywords.slice(0, 3).join(' · ')}
                       </span>
                     </span>
-                    <span className={`legend-orientation ${drawn.orientation}`}>
-                      {drawn.orientation === 'upright' ? '正位' : '逆位'}
+                    <span
+                      className={`legend-orientation ${drawn.card.private ? 'private' : drawn.orientation}`}
+                    >
+                      {drawn.card.private
+                        ? '第79张'
+                        : drawn.orientation === 'upright'
+                          ? '正位'
+                          : '逆位'}
                     </span>
                   </div>
                 )
               })}
             </div>
+            <SpreadRelationMap cards={cards} compact />
             {snapshot && (
               <figure className="summary-snapshot">
                 <img src={snapshot} alt="当时的心情快照" />
@@ -621,13 +646,16 @@ export default function ReadingView({
                 type="button"
                 className={`chat-voice-toggle ${ttsOn ? 'is-on' : ''}`}
                 aria-pressed={ttsOn}
+                aria-label={ttsOn ? '关闭朗读' : '开启朗读'}
+                title="朗读月鉴的回应"
                 onClick={() => {
+                  if (!ttsOn) unlockSpeechAudio()
                   setTtsOn((value) => !value)
                   if (ttsOn) stopSpeaking()
                 }}
               >
                 <span className="chat-voice-dot" />
-                {ttsOn ? '轻语 开' : '轻语 关'}
+                {ttsOn ? '朗读 开' : '朗读 关'}
               </button>
             </div>
 
@@ -862,6 +890,21 @@ export default function ReadingView({
               createdAt={savedEntry.createdAt}
               snapshot={snapshot}
             />
+          )}
+          {!insight?.crisis && (privateCard || privateEligible) && (
+            <button
+              type="button"
+              className={`private-invite ${privateCard ? 'is-created' : ''}`}
+              onClick={onOpenPrivateCard}
+            >
+              <span className="eyebrow">你的第79张</span>
+              <p>
+                {privateCard
+                  ? privateCard.name
+                  : '三次照见已经够了。可以从你写下的意象里，长出一张只属于你的牌。'}
+              </p>
+              <span>{privateCard ? '查看我的牌 →' : '让它长出来 →'}</span>
+            </button>
           )}
           <div className="insight-actions">
             <button type="button" className="primary-btn" onClick={onJournal}>

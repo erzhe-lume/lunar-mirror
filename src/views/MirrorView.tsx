@@ -1,6 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { JournalEntry, TarotCard as TarotCardData } from '../types'
+import type {
+  JournalEntry,
+  PrivateCard,
+  TarotCard as TarotCardData,
+} from '../types'
 import { parseBackup } from '../lib/backup'
 import { classifyTheme } from '../lib/demo'
 import { formatShortDate } from '../lib/format'
@@ -10,11 +14,17 @@ import TarotCard from '../components/TarotCard'
 
 interface Props {
   entries: JournalEntry[]
+  privateCard: PrivateCard | null
   onBack: () => void
   onOpenJournal: () => void
-  onImport: (entries: JournalEntry[]) => Promise<{
+  onOpenPrivateCard: () => void
+  onImport: (
+    entries: JournalEntry[],
+    privateCard: PrivateCard | null,
+  ) => Promise<{
     added: number
     updated: number
+    privateCard: 'restored' | 'kept' | 'none'
   }>
 }
 
@@ -34,8 +44,10 @@ function readFileText(file: File): Promise<string> {
 
 export default function MirrorView({
   entries,
+  privateCard,
   onBack,
   onOpenJournal,
+  onOpenPrivateCard,
   onImport,
 }: Props) {
   const [exported, setExported] = useState(false)
@@ -164,9 +176,21 @@ export default function MirrorView({
   }, [entries.length, stats])
 
   const exportRecords = () => {
-    const blob = new Blob([JSON.stringify(entries, null, 2)], {
-      type: 'application/json',
-    })
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            version: 2,
+            exportedAt: Date.now(),
+            entries,
+            privateCard,
+          },
+          null,
+          2,
+        ),
+      ],
+      { type: 'application/json' },
+    )
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -206,12 +230,17 @@ export default function MirrorView({
       ) {
         return
       }
-      const result = await onImport(parsed.entries)
+      const result = await onImport(parsed.entries, parsed.privateCard)
       const details = [
         parsed.skipped > 0 ? `跳过 ${parsed.skipped} 条无法识别的记录` : '',
         parsed.snapshotsDropped > 0
           ? `忽略 ${parsed.snapshotsDropped} 张超大快照`
           : '',
+        result.privateCard === 'restored'
+          ? '已恢复你的第79张'
+          : result.privateCard === 'kept'
+            ? '本机已有第79张，保留本机版本'
+            : '',
       ].filter(Boolean)
       setImportStatus({
         tone: 'ok',
@@ -325,6 +354,17 @@ export default function MirrorView({
           </article>
 
           <aside className="mirror-aside">
+            {privateCard && (
+              <button
+                type="button"
+                className="mirror-block mirror-private-block"
+                onClick={onOpenPrivateCard}
+              >
+                <span className="eyebrow">你的第79张</span>
+                <strong>{privateCard.name}</strong>
+                <span>查看我的牌 →</span>
+              </button>
+            )}
             <section className="mirror-block">
               <h3>
                 {entries.length === 1

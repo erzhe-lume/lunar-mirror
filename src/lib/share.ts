@@ -177,7 +177,11 @@ function drawCardTile(
   ctx.font = `400 ${12 * scale}px "Songti SC", SimSun, serif`
   ctx.fillStyle = 'rgba(163, 157, 177, 0.8)'
   ctx.fillText(
-    drawn.orientation === 'upright' ? '正位' : '逆位',
+    drawn.card.private
+      ? '第79张'
+      : drawn.orientation === 'upright'
+        ? '正位'
+        : '逆位',
     x + width / 2,
     y + 204 * scale,
   )

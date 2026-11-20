@@ -29,6 +29,21 @@ export interface TarotCard {
   upright: { keywords: string[]; meaning: string }
   reversed: { keywords: string[]; meaning: string }
   prompts: [string, string]
+  private?: boolean
+  privateImageId?: string
+}
+
+export interface PrivateCard {
+  id: string
+  name: string
+  nameEn: string
+  symbol: string
+  keywords: string[]
+  prompt: string
+  imageId: string
+  createdAt: number
+  sourceEntryIds: string[]
+  pending: boolean
 }
 
 export interface DrawnCard {

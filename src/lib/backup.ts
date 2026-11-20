@@ -5,9 +5,11 @@ import type {
   JournalEntry,
   Orientation,
   PositionKey,
+  PrivateCard,
   Revisit,
   TarotCard,
 } from '../types'
+import { normalizePrivateCard } from './private-card'
 
 const POSITIONS: PositionKey[] = ['situation', 'blindspot', 'action']
 const SNAPSHOT_LIMIT = 2_000_000
@@ -69,6 +71,8 @@ function normalizeTarotCard(value: unknown): TarotCard | null {
     upright,
     reversed,
     prompts: [prompts[0] ?? '', prompts[1] ?? ''],
+    private: card.private === true ? true : undefined,
+    privateImageId: textOf(card.privateImageId, 80) || undefined,
   }
 }
 
@@ -188,6 +192,7 @@ function normalizeEntry(value: unknown): {
 
 export interface BackupParseResult {
   entries: JournalEntry[]
+  privateCard: PrivateCard | null
   skipped: number
   snapshotsDropped: number
 }
@@ -199,14 +204,18 @@ export function parseBackup(source: string): BackupParseResult {
   } catch {
     throw new Error('这个文件不是有效的 JSON 备份。')
   }
+  const container = recordOf(data)
   const list = Array.isArray(data)
     ? data
-    : Array.isArray(recordOf(data)?.entries)
-      ? (recordOf(data)?.entries as unknown[])
+    : Array.isArray(container?.entries)
+      ? (container?.entries as unknown[])
       : null
   if (!list) {
     throw new Error('备份里没有找到记录数组。')
   }
+  const privateCard = container
+    ? normalizePrivateCard(container.privateCard)
+    : null
 
   const byId = new Map<string, JournalEntry>()
   let skipped = 0
@@ -223,6 +232,7 @@ export function parseBackup(source: string): BackupParseResult {
   }
   return {
     entries: [...byId.values()].sort((a, b) => b.createdAt - a.createdAt),
+    privateCard,
     skipped,
     snapshotsDropped,
   }

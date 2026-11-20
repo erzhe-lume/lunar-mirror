@@ -35,6 +35,18 @@ html {
   scrollbar-color: rgba(201, 206, 213, 0.28) transparent;
 }
 
+.chat-scroll::-webkit-scrollbar-thumb,
+.transcript-body::-webkit-scrollbar-thumb,
+.modal::-webkit-scrollbar-thumb {
+  background: rgba(201, 208, 216, 0.28);
+}
+
+.chat-scroll::-webkit-scrollbar,
+.transcript-body::-webkit-scrollbar,
+.modal::-webkit-scrollbar {
+  width: 6px;
+}
+
 .app {
   overflow-x: clip;
 }
@@ -762,6 +774,17 @@ html[data-theme] .home-aside-note {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
 }
 
+.model-chip:hover {
+  color: var(--silver-hi);
+  border-color: rgba(224, 230, 236, 0.4);
+}
+
+.model-chip.is-active {
+  color: var(--silver-hi);
+  background: rgba(204, 212, 220, 0.1);
+  border-color: rgba(224, 230, 236, 0.44);
+}
+
 .reading-lens-btn {
   background: rgba(10, 11, 13, 0.55);
   border-color: rgba(204, 210, 218, 0.16);
@@ -778,6 +801,61 @@ html[data-theme] .home-aside-note {
   color: rgba(220, 226, 232, 0.62);
   background: rgba(0, 0, 0, 0.24);
   border-color: rgba(204, 210, 218, 0.12);
+}
+
+.voice-reload {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 0 2px;
+  vertical-align: middle;
+}
+
+.voice-cloud-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  margin-top: 9px;
+}
+
+.voice-cloud-label {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.voice-cloud-chip {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 7px 11px;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: rgba(204, 212, 220, 0.04);
+  border: 1px solid rgba(204, 212, 220, 0.2);
+  border-radius: 999px;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.voice-cloud-chip:hover,
+.voice-cloud-chip:focus-visible {
+  color: var(--silver-hi);
+  border-color: rgba(222, 228, 234, 0.42);
+}
+
+.voice-cloud-chip.is-active {
+  color: var(--silver-hi);
+  background: rgba(204, 212, 220, 0.1);
+  border-color: rgba(226, 231, 237, 0.56);
+}
+
+@media (max-width: 720px) {
+  .voice-cloud-chip {
+    flex: 1 1 auto;
+    min-height: 40px;
+    justify-content: center;
+  }
 }
 
 .spread-slot.is-active .slot-placeholder {
@@ -1351,6 +1429,14 @@ html[data-theme] .home-aside-note {
 
 .fan-hint {
   color: rgba(204, 211, 219, 0.48);
+}
+
+.fan-private-hint {
+  margin-top: -8px;
+  font-family: var(--serif);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(226, 232, 237, 0.62);
 }
 
 .fan-arc {
@@ -2424,4 +2510,684 @@ html[data-theme] .home-aside-note {
     transparent 70%
   );
   border-color: rgba(204, 212, 220, 0.14);
+}
+
+/* WebKit 会忽略 3D backface，按翻面中点切换显示面 */
+.tarot-card.showing-back .tarot-front {
+  display: none;
+}
+
+.tarot-card.showing-front .tarot-back {
+  transform: scale(0);
+}
+
+@media (max-width: 360px) {
+  .chat-scroll {
+    gap: 12px;
+    padding: 14px 12px;
+  }
+
+  .bubble-row {
+    gap: 0;
+  }
+
+  .bubble-avatar {
+    display: none;
+  }
+
+  .bubble {
+    max-width: 94%;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .bubble-mirror {
+    padding: 14px 14px 15px;
+  }
+
+  .model-chip {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    padding: 8px 12px;
+  }
+}
+
+@media (max-height: 720px) {
+  .safety-modal {
+    gap: 10px;
+    padding: 16px 18px 14px;
+  }
+
+  .safety-emblem {
+    width: 38px;
+    height: 38px;
+    margin-bottom: 0;
+    font-size: 17px;
+  }
+
+  .safety-modal h2 {
+    font-size: 24px;
+  }
+
+  .safety-lead {
+    font-size: 12.5px;
+    line-height: 1.75;
+  }
+
+  .safety-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .safety-call {
+    flex-direction: column;
+    gap: 2px;
+    min-height: 58px;
+    padding: 6px 4px;
+  }
+
+  .safety-call strong {
+    font-size: 17px;
+  }
+
+  .safety-call span {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+}
+
+@media (max-height: 480px) {
+  .safety-modal {
+    gap: 8px;
+  }
+
+  .safety-emblem {
+    display: none;
+  }
+
+  .safety-modal h2 {
+    font-size: 22px;
+  }
+
+  .safety-lead {
+    font-size: 11.5px;
+    line-height: 1.65;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-fan-card .card-brand {
+    display: none;
+  }
+
+  .hero-fan-card .card-keywords {
+    flex-shrink: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* ---------- 私人第79张 ---------- */
+.slot-orientation.private,
+.legend-orientation.private {
+  color: var(--silver-hi);
+  background: rgba(204, 212, 220, 0.08);
+  border-color: rgba(222, 228, 234, 0.42);
+}
+
+.private-back-seal {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-family: var(--display);
+  font-size: 8px;
+  letter-spacing: 0;
+  color: rgba(232, 236, 239, 0.72);
+  pointer-events: none;
+  background: rgba(4, 5, 7, 0.72);
+  border: 1px solid rgba(218, 225, 232, 0.42);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(210, 218, 226, 0.12);
+  transform: translateX(-50%);
+}
+
+.tarot-sm .private-back-seal {
+  width: 14px;
+  height: 14px;
+  font-size: 6px;
+}
+
+.tarot-xs .private-back-seal {
+  display: none;
+}
+
+.tarot-card.is-private .tarot-front {
+  box-shadow:
+    inset 0 0 0 1px rgba(70, 72, 66, 0.3),
+    inset 0 0 0 4px rgba(255, 255, 255, 0.22),
+    inset 0 -16px 30px rgba(76, 76, 68, 0.12),
+    0 16px 34px rgba(0, 0, 0, 0.45),
+    0 0 28px rgba(210, 218, 226, 0.1);
+}
+
+.tarot-card.is-private .card-name {
+  max-width: 96%;
+  overflow: hidden;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarot-card.is-private .card-brand {
+  display: none;
+}
+
+.tarot-card.is-private .card-keywords {
+  max-width: 100%;
+  font-size: 7px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.tarot-card.is-private .card-en {
+  max-width: 94%;
+  overflow: hidden;
+  font-size: 5.5px;
+  letter-spacing: 0.14em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarot-card.is-private .card-badge.private {
+  color: #565b5e;
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(70, 74, 75, 0.26);
+}
+
+.tarot-sm .tarot-card.is-private .card-name,
+.tarot-sm.is-private .card-name {
+  font-size: 12px;
+}
+
+.tarot-xs .tarot-card.is-private .card-name,
+.tarot-xs.is-private .card-name {
+  font-size: 9px;
+}
+
+.mirror-private-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  background:
+    radial-gradient(ellipse at 16% 0%, rgba(214, 221, 229, 0.07), transparent 58%),
+    rgba(12, 14, 16, 0.72);
+  border: 1px solid rgba(204, 212, 220, 0.18);
+}
+
+.mirror-private-block strong {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: #e5e8e6;
+}
+
+.mirror-private-block > span:last-child {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.private-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: min(780px, 100%);
+  padding: 16px 20px;
+  text-align: left;
+  cursor: pointer;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(214, 221, 229, 0.08), transparent 58%),
+    linear-gradient(145deg, rgba(20, 22, 25, 0.85), rgba(9, 10, 12, 0.9));
+  border: 1px solid rgba(204, 212, 220, 0.2);
+  border-left: 2px solid rgba(218, 225, 232, 0.5);
+  border-radius: 4px 14px 14px 14px;
+  transition: border-color 0.25s, background 0.25s;
+}
+
+.private-invite:hover,
+.private-invite:focus-visible {
+  border-color: rgba(224, 230, 236, 0.42);
+}
+
+.private-invite p {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.7;
+  color: #e5e8e5;
+}
+
+.private-invite > span:last-child {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  color: rgba(214, 221, 228, 0.68);
+}
+
+.private-invite.is-created {
+  border-left-color: rgba(190, 180, 160, 0.5);
+}
+
+.home-private-note {
+  border-color: rgba(204, 212, 220, 0.2);
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(214, 221, 229, 0.07), transparent 58%),
+    rgba(10, 11, 13, 0.62);
+}
+
+.home-private-note .blank-action {
+  color: rgba(214, 221, 228, 0.75);
+}
+
+/* ---------- 私人牌创建弹层 ---------- */
+.private-veil {
+  z-index: 92;
+}
+
+.private-card-modal {
+  width: min(880px, 100%);
+  max-width: 880px;
+  max-height: 90vh;
+  max-height: 90svh;
+  gap: 18px;
+  padding: 26px 28px 24px;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(214, 221, 229, 0.06), transparent 54%),
+    linear-gradient(165deg, #141619, #08090b);
+  border-color: rgba(214, 220, 227, 0.28);
+}
+
+.private-card-head {
+  align-items: flex-start;
+}
+
+.private-card-head h2 {
+  margin-top: 8px;
+  font-size: clamp(24px, 3.6vw, 32px);
+  letter-spacing: 0.05em;
+  color: #eef0ed;
+}
+
+.private-lead {
+  max-width: 760px;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: #aeb1ae;
+}
+
+.private-creator {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 24px;
+  align-items: start;
+}
+
+.private-choice-column {
+  min-width: 0;
+}
+
+.private-choices {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.private-choice {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 11px 13px;
+  text-align: left;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid rgba(204, 212, 220, 0.16);
+  border-radius: 10px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.private-choice:hover,
+.private-choice:focus-visible {
+  border-color: rgba(222, 228, 234, 0.36);
+}
+
+.private-choice.is-selected {
+  background: rgba(212, 219, 227, 0.07);
+  border-color: rgba(228, 233, 238, 0.56);
+}
+
+.private-choice-symbol {
+  display: grid;
+  font-variant-emoji: text;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-family: var(--serif);
+  font-size: 21px;
+  color: var(--silver-hi);
+  background: rgba(204, 212, 220, 0.05);
+  border: 1px solid rgba(204, 212, 220, 0.2);
+  border-radius: 50%;
+}
+
+.private-choice-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.private-choice-copy strong {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: #e7e9e6;
+}
+
+.private-choice-copy em {
+  overflow: hidden;
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.03em;
+  color: #858985;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.private-shuffle {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  margin-top: 5px;
+  font-size: 11px;
+}
+
+.private-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.private-name-field input {
+  width: 100%;
+  padding: 9px 11px;
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--ink);
+  background: rgba(7, 8, 10, 0.6);
+  border: 1px solid rgba(204, 212, 220, 0.2);
+  border-radius: 8px;
+  outline: none;
+}
+
+.private-name-field input:focus {
+  border-color: rgba(224, 230, 236, 0.5);
+}
+
+.private-name-warning {
+  color: #cf9f9f;
+}
+
+.private-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding: 14px 12px 10px;
+  background:
+    radial-gradient(ellipse at 50% 10%, rgba(214, 221, 229, 0.09), transparent 62%),
+    rgba(7, 8, 10, 0.45);
+  border: 1px solid rgba(204, 212, 220, 0.13);
+  border-radius: 14px;
+}
+
+.private-preview .tarot-card {
+  width: 138px;
+}
+
+.private-preview-caption {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: rgba(204, 212, 220, 0.52);
+  text-align: center;
+}
+
+.private-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.private-actions .text-btn {
+  margin-right: auto;
+}
+
+.private-view {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.private-view-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.private-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.private-keywords span {
+  padding: 4px 9px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: rgba(230, 233, 230, 0.78);
+  background: rgba(204, 212, 220, 0.06);
+  border: 1px solid rgba(204, 212, 220, 0.22);
+  border-radius: 999px;
+}
+
+.private-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.75;
+  color: var(--faint);
+}
+
+.private-delete {
+  color: #c79a9a;
+  border-color: rgba(199, 154, 154, 0.28);
+}
+
+.private-delete:hover:not(:disabled) {
+  color: #e1bcbc;
+  border-color: rgba(225, 188, 188, 0.5);
+}
+
+/* ---------- 牌阵关系图 ---------- */
+.spread-map {
+  margin-top: 18px;
+  padding: 14px 0 2px;
+  border-top: 1px solid rgba(204, 212, 220, 0.12);
+}
+
+.spread-map-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: rgba(204, 212, 220, 0.36);
+}
+
+.spread-map-head .eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: rgba(214, 221, 228, 0.64);
+}
+
+.spread-map-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 4px 0 2px;
+  overflow: visible;
+}
+
+.spread-map-base {
+  stroke: rgba(204, 212, 220, 0.14);
+  stroke-width: 0.7;
+  stroke-dasharray: 2 5;
+}
+
+.spread-map-edge.is-shared {
+  stroke: rgba(226, 231, 237, 0.68);
+  stroke-width: 1.15;
+}
+
+.spread-map-edge.is-opposite {
+  stroke: rgba(190, 174, 150, 0.62);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.spread-map-edge-label {
+  font-family: var(--sans);
+  font-size: 6.5px;
+  letter-spacing: 0.02em;
+  fill: rgba(204, 212, 220, 0.54);
+}
+
+.spread-map-node circle {
+  fill: rgba(8, 9, 11, 0.9);
+  stroke: rgba(204, 212, 220, 0.46);
+  stroke-width: 0.8;
+}
+
+.spread-map-node circle.is-private {
+  stroke: rgba(226, 231, 237, 0.74);
+  stroke-dasharray: 2 2;
+}
+
+.spread-map-index {
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  fill: rgba(230, 234, 237, 0.78);
+}
+
+.spread-map-label {
+  font-family: var(--sans);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  fill: rgba(204, 212, 220, 0.54);
+}
+
+.spread-map-name {
+  font-family: var(--serif);
+  font-size: 7.5px;
+  letter-spacing: 0.02em;
+  fill: rgba(222, 227, 231, 0.46);
+}
+
+.spread-map-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: rgba(204, 212, 220, 0.5);
+}
+
+.spread-map.is-compact {
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.spread-map.is-compact .spread-map-svg {
+  margin-top: 2px;
+}
+
+.spread-map.is-compact .spread-map-legend {
+  font-size: 9px;
+}
+
+@media (max-width: 620px) {
+  .private-card-modal {
+    max-height: 92svh;
+    padding: 20px 18px 18px;
+  }
+
+  .private-card-head h2 {
+    font-size: 24px;
+  }
+
+  .private-creator,
+  .private-view {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .private-preview {
+    order: -1;
+    padding: 10px 12px 8px;
+  }
+
+  .private-preview .tarot-card {
+    width: 128px;
+  }
+
+  .private-actions {
+    justify-content: stretch;
+  }
+
+  .private-actions .primary-btn {
+    flex: 1 1 100%;
+  }
+
+  .private-actions .text-btn {
+    margin-right: 0;
+  }
+
+  .private-invite {
+    padding: 14px 16px;
+  }
+
+  .private-invite p {
+    font-size: 15px;
+  }
 }

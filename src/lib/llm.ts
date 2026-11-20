@@ -758,11 +758,12 @@ const SUIT_GRAMMAR = [
 ]
 
 function spreadGrammar(cards: DrawnCard[]): string {
-  const majorCount = cards.filter((drawn) => drawn.card.id < 22).length
-  const reversedCount = cards.filter(
+  const regularCards = cards.filter((drawn) => !drawn.card.private)
+  const majorCount = regularCards.filter((drawn) => drawn.card.id < 22).length
+  const reversedCount = regularCards.filter(
     (drawn) => drawn.orientation === 'reversed',
   ).length
-  const minorCards = cards.filter((drawn) => drawn.card.id >= 22)
+  const minorCards = regularCards.filter((drawn) => drawn.card.id >= 22)
   const suitCounts = [0, 0, 0, 0]
   const rankCounts = new Map<string, number>()
   let courtCount = 0
@@ -820,16 +821,26 @@ function spreadGrammar(cards: DrawnCard[]): string {
   if (courtCount >= 2) {
     notes.push('两张宫廷牌，适合读成某种姿态或角色，而不是具体的人')
   }
+  if (cards.some((drawn) => drawn.card.private)) {
+    notes.push('其中一张是你自己命名的第79张镜牌，不计入大小阿卡纳统计')
+  }
 
   return `牌阵结构：${notes.join('；')}。先看牌与牌之间的呼应，再选一到两张作为证据，不要逐张解释。`
 }
 
 export function buildCardContext(cards: DrawnCard[]): string {
+  const hasPrivate = cards.some((drawn) => drawn.card.private)
   const lines = cards.map((drawn, index) => {
     const position = POSITIONS[drawn.position]
+    if (drawn.card.private) {
+      return `${index + 1}. ${position.label}（${position.hint}）：【你的第79张 · ${drawn.card.name}】你带来的图像，不是固定塔罗牌义｜关键词：${drawn.card.upright.keywords.join('、')}｜追问：${drawn.card.upright.meaning}`
+    }
     return `${index + 1}. ${position.label}（${position.hint}）：《${drawn.card.name}》${orientationLabel(drawn)}｜关键词：${cardKeywords(drawn).join('、')}｜牌义：${cardMeaning(drawn)}`
   })
-  return `本次三张牌：\n${lines.join('\n')}\n${spreadGrammar(cards)}`
+  const privateRule = hasPrivate
+    ? '\n私牌规则：第79张是用户自己命名的图像，不是塔罗牌，没有正逆位与固定牌义；最多用一句话呼应它，不要赋予权威、预测或“牌告诉你”的语气。'
+    : ''
+  return `本次三张牌：\n${lines.join('\n')}\n${spreadGrammar(cards)}${privateRule}`
 }
 
 function buildOpeningPrompt(

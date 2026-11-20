@@ -1,8 +1,20 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import type { DrawnCard, JournalEntry, Settings } from './types'
+import type {
+  DrawnCard,
+  JournalEntry,
+  PrivateCard,
+  Settings,
+} from './types'
 import { setBgmVolume, startBgm, stopBgm } from './lib/bgm'
 import { detectSafetyConcern, type SafetyKind } from './lib/crisis'
 import { applyTheme } from './lib/theme'
+import { unlockSpeechAudio } from './lib/speech'
+import {
+  clearPrivateCard,
+  loadPrivateCard,
+  privateCardEligible,
+  savePrivateCard,
+} from './lib/private-card'
 import {
   clearNavigation,
   clearReadingSnapshot,
@@ -21,6 +33,7 @@ import PosterFrame from './components/PosterFrame'
 import SafetyGate from './components/SafetyGate'
 import SealMark from './components/SealMark'
 import HomeView from './views/HomeView'
+import PrivateCardModal from './components/PrivateCardModal'
 import './App.css'
 import './visual-polish.css'
 import './model-manager.css'
@@ -68,6 +81,10 @@ export default function App() {
   const [view, setView] = useState<View>(initialView)
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [entries, setEntries] = useState<JournalEntry[]>([])
+  const [privateCard, setPrivateCard] = useState<PrivateCard | null>(() =>
+    loadPrivateCard(),
+  )
+  const [privateOpen, setPrivateOpen] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(
     () => restored?.draft ?? null,
   )
@@ -92,6 +109,16 @@ export default function App() {
   const viewRef = useRef(view)
   const navStateRef = useRef({ session, draft })
   const bgmVolumeRef = useRef(settings.bgmVolume)
+
+  useEffect(() => {
+    const unlock = () => unlockSpeechAudio()
+    window.addEventListener('pointerdown', unlock, { once: true, passive: true })
+    window.addEventListener('keydown', unlock, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [])
 
   useEffect(() => {
     viewRef.current = view
@@ -274,6 +301,34 @@ export default function App() {
     })
   }
 
+  const persistPrivateCard = (next: PrivateCard | null) => {
+    setPrivateCard(next)
+    if (next) {
+      if (!savePrivateCard(next)) {
+        window.alert('第79张写入失败，请检查浏览器存储空间。')
+      }
+    } else {
+      clearPrivateCard()
+    }
+  }
+
+  const handleCreatePrivateCard = (card: PrivateCard) => {
+    persistPrivateCard({ ...card, pending: true })
+  }
+
+  const handlePrivateShown = () => {
+    if (privateCard?.pending) {
+      persistPrivateCard({ ...privateCard, pending: false })
+    }
+  }
+
+  const handleDeletePrivateCard = () => {
+    persistPrivateCard(null)
+    setPrivateOpen(false)
+  }
+
+  const canCreatePrivate = !privateCard && privateCardEligible(entries)
+
   const handleUpdateEntry = async (entry: JournalEntry) => {
     await saveEntry(entry)
     setEntries((previous) =>
@@ -286,7 +341,10 @@ export default function App() {
     setEntries((previous) => previous.filter((item) => item.id !== id))
   }
 
-  const handleImportEntries = async (imported: JournalEntry[]) => {
+  const handleImportEntries = async (
+    imported: JournalEntry[],
+    importedPrivateCard: PrivateCard | null,
+  ) => {
     const existing = new Set(entries.map((entry) => entry.id))
     const added = imported.filter((entry) => !existing.has(entry.id)).length
     await saveEntries(imported)
@@ -295,7 +353,16 @@ export default function App() {
       imported.forEach((entry) => merged.set(entry.id, entry))
       return [...merged.values()].sort((a, b) => b.createdAt - a.createdAt)
     })
-    return { added, updated: imported.length - added }
+    let privateStatus: 'restored' | 'kept' | 'none' = 'none'
+    if (importedPrivateCard) {
+      if (privateCard) {
+        privateStatus = 'kept'
+      } else {
+        persistPrivateCard(importedPrivateCard)
+        privateStatus = 'restored'
+      }
+    }
+    return { added, updated: imported.length - added, privateCard: privateStatus }
   }
 
   const persistSettings = (next: Settings) => {
@@ -368,6 +435,9 @@ export default function App() {
             <HomeView
               settings={settings}
               entries={entries}
+              privateCard={privateCard}
+              privateEligible={canCreatePrivate}
+              onOpenPrivateCard={() => setPrivateOpen(true)}
               onStart={beginDraw}
               onOpenJournal={openJournal}
               onOpenEntry={openJournalEntry}
@@ -379,6 +449,8 @@ export default function App() {
               question={draft.question}
               querent={draft.querent}
               soundEnabled={settings.soundEnabled}
+              privateCard={privateCard}
+              onPrivateShown={handlePrivateShown}
               onBack={goHome}
               onComplete={completeDraw}
             />
@@ -390,6 +462,9 @@ export default function App() {
               querent={session.querent}
               snapshot={session.snapshot}
               cards={session.cards}
+              privateCard={privateCard}
+              privateEligible={canCreatePrivate}
+              onOpenPrivateCard={() => setPrivateOpen(true)}
               onSaved={handleSaved}
               onHome={goHome}
               onJournal={openJournal}
@@ -407,8 +482,10 @@ export default function App() {
           {view === 'mirror' && (
             <MirrorView
               entries={entries}
+              privateCard={privateCard}
               onBack={goHome}
               onOpenJournal={openJournal}
+              onOpenPrivateCard={() => setPrivateOpen(true)}
               onImport={handleImportEntries}
             />
           )}
@@ -440,6 +517,21 @@ export default function App() {
             onThemePreview={applyTheme}
           />
         </Suspense>
+      )}
+      {privateOpen && (
+        <PrivateCardModal
+          open={privateOpen}
+          entries={entries}
+          privateCard={privateCard}
+          onClose={() => setPrivateOpen(false)}
+          onCreate={handleCreatePrivateCard}
+          onDelete={handleDeletePrivateCard}
+          onQueue={() => {
+            if (privateCard) {
+              persistPrivateCard({ ...privateCard, pending: true })
+            }
+          }}
+        />
       )}
       {safetyGate && (
         <SafetyGate

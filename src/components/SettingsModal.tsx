@@ -17,7 +17,14 @@ import {
   normalizeBase,
   providerLabel,
 } from '../lib/providers'
-import { listChineseVoices, pickPreferredVoice, speak } from '../lib/speech'
+import {
+  CLOUD_VOICES,
+  isCloudVoice,
+  listChineseVoices,
+  pickPreferredVoice,
+  speak,
+  unlockSpeechAudio,
+} from '../lib/speech'
 import { playChime } from '../lib/sound'
 import { THEMES } from '../lib/theme'
 
@@ -87,6 +94,7 @@ export default function SettingsModal({
   const [voiceEnabled, setVoiceEnabled] = useState(settings.voiceEnabled)
   const [voiceURI, setVoiceURI] = useState(settings.voiceURI)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [voiceScanDone, setVoiceScanDone] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(settings.soundEnabled)
   const [bgmEnabled, setBgmEnabled] = useState(settings.bgmEnabled)
   const [bgmVolume, setBgmVolumeValue] = useState(settings.bgmVolume)
@@ -197,12 +205,32 @@ export default function SettingsModal({
   }, [activeTab, open])
 
   useEffect(() => {
-    if (!open || !('speechSynthesis' in window)) return
-    const load = () => setVoices(listChineseVoices())
+    if (!open) return
+    setVoiceScanDone(false)
+    if (!('speechSynthesis' in window)) {
+      setVoices([])
+      setVoiceScanDone(true)
+      return
+    }
+    const load = () => {
+      setVoices(listChineseVoices())
+    }
     load()
-    window.speechSynthesis.addEventListener('voiceschanged', load)
-    return () =>
-      window.speechSynthesis.removeEventListener('voiceschanged', load)
+    const timers = [160, 700, 1800].map((delay, index) =>
+      window.setTimeout(() => {
+        load()
+        if (index === 2) setVoiceScanDone(true)
+      }, delay),
+    )
+    const onVoicesChanged = () => {
+      load()
+      setVoiceScanDone(true)
+    }
+    window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged)
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer))
+      window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged)
+    }
   }, [open])
 
   useEffect(() => {
@@ -252,6 +280,22 @@ export default function SettingsModal({
   if (!open) return null
 
   const autoVoice = pickPreferredVoice()
+  const autoVoiceName = autoVoice
+    ? autoVoice.name.replace(/^Microsoft /, '').replace(/ - Chinese.*$/, '')
+    : ''
+  const cloudSelected = isCloudVoice(voiceURI)
+  const cloudReady = Boolean(apiKey.trim())
+  const reloadVoices = () => {
+    unlockSpeechAudio()
+    if (!('speechSynthesis' in window)) {
+      setVoices([])
+      setVoiceScanDone(true)
+      return
+    }
+    setVoices(listChineseVoices())
+    setVoiceScanDone(true)
+    window.setTimeout(() => setVoices(listChineseVoices()), 400)
+  }
   const activeProvider = findProvider(apiProtocol, apiBase)
   const activeProtocol = API_PROTOCOLS.find((item) => item.id === apiProtocol)
   const historyKey = modelHistoryKey(apiProtocol, apiBase)
@@ -1122,7 +1166,7 @@ export default function SettingsModal({
           <span>
             <span className="field-label">朗读月鉴的回应</span>
             <span className="field-hint">
-              使用浏览器语音合成，可随时在对话中关闭；不消耗月鉴的模型接口额度。
+              可随时在对话中关闭；手机系统轻语不消耗模型额度，云端人声需要 API Key。
             </span>
           </span>
           <button
@@ -1144,38 +1188,83 @@ export default function SettingsModal({
               onChange={(event) => setVoiceURI(event.target.value)}
               aria-label="选择月鉴的朗读音色"
             >
-              <option value="">
-                自动推荐
-                {autoVoice
-                  ? `（${autoVoice.name
-                      .replace(/^Microsoft /, '')
-                      .replace(/ - Chinese.*$/, '')}）`
-                  : ''}
-              </option>
-              {voices.map((voice) => (
-                <option key={voice.voiceURI} value={voice.voiceURI}>
-                  {voice.name} · {voice.lang}
-                  {voice.localService ? ' · 本地' : ''}
-                </option>
-              ))}
+              <option value="">自动推荐</option>
+              <optgroup label="云端人声 · 更接近真人">
+                {CLOUD_VOICES.map((voice) => (
+                  <option key={`cloud:${voice.id}`} value={`cloud:${voice.id}`}>
+                    {voice.label}
+                  </option>
+                ))}
+              </optgroup>
+              {voices.length > 0 && (
+                <optgroup label="手机系统语音">
+                  {voices.map((voice) => (
+                    <option key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name} · {voice.lang}
+                      {voice.localService ? ' · 本地' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <button
               type="button"
               className="ghost-btn small"
-              onClick={() =>
-                speak('我是月鉴。先不急着找答案，我们慢慢看。', voiceURI)
-              }
+              onClick={() => {
+                unlockSpeechAudio()
+                speak('我是月鉴。先不急着找答案，我们慢慢看。', voiceURI, {
+                  apiBase: apiBase.trim() || defaultBaseFor(apiProtocol),
+                  apiKey,
+                })
+              }}
             >
               试听
             </button>
           </div>
-          <span className="field-hint">
-            自动优先清亮女声（Natural / 晓晓 / 晓伊 / 瑶瑶），语速与音高也按轻甜、清楚的方向调过；在线音色需要网络，断网时会回退到系统语音。
-          </span>
-          {voices.length > 0 &&
+          <div className="voice-cloud-row" role="group" aria-label="云端人声">
+            <span className="voice-cloud-label">云端人声</span>
+            {CLOUD_VOICES.map((voice) => (
+              <button
+                key={`chip-${voice.id}`}
+                type="button"
+                className={`voice-cloud-chip ${voiceURI === `cloud:${voice.id}` ? 'is-active' : ''}`}
+                aria-pressed={voiceURI === `cloud:${voice.id}`}
+                onClick={() => setVoiceURI(`cloud:${voice.id}`)}
+              >
+                {voice.label}
+              </button>
+            ))}
+          </div>
+          {cloudSelected ? (
+            <span className="field-hint">
+              {cloudReady
+                ? '会调用当前 Key 的 OpenAI 兼容 /audio/speech，文本会发给服务商并可能计费；不支持时自动回退系统语音。'
+                : '云端人声需要先在「模型与接口」填 API Key；未配置时会回退系统语音。'}
+            </span>
+          ) : (
+            <span className="field-hint">
+              {autoVoiceName ? `当前自动选择 ${autoVoiceName}。` : ''}
+              系统语音取决于手机是否安装中文人声。
+            </span>
+          )}
+          {!cloudSelected && voices.length === 0 && voiceScanDone && (
+            <span className="field-hint">
+              没读到中文系统语音。可
+              <button
+                type="button"
+                className="inline-link voice-reload"
+                onClick={reloadVoices}
+              >
+                重新读取
+              </button>
+              ，或选云端人声。
+            </span>
+          )}
+          {!cloudSelected &&
+            voices.length > 0 &&
             !voices.some((voice) => /natural|neural/i.test(voice.name)) && (
               <span className="field-hint">
-                当前系统只提供基础本地音色；使用 Edge 或安装 Natural 语音时，会自动优先更清亮自然的女声。
+                系统只提供基础音色；云端人声会更接近真人。
               </span>
             )}
         </label>

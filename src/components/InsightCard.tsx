@@ -4,6 +4,7 @@ import { POSITIONS } from '../types'
 import { formatDate } from '../lib/format'
 import type { ShareFormat } from '../lib/share'
 import { composeVerse } from '../lib/verse'
+import SpreadRelationMap from './SpreadRelationMap'
 import TarotCard from './TarotCard'
 
 function renderVerseLine(line: string) {
@@ -141,12 +142,21 @@ export default function InsightCard({
                   size="sm"
                 />
                 <span className="insight-card-name">
-                  {drawn.card.name} · {drawn.orientation === 'upright' ? '正位' : '逆位'}
+                  {drawn.card.name} ·{' '}
+                  {drawn.card.private
+                    ? '第79张'
+                    : drawn.orientation === 'upright'
+                      ? '正位'
+                      : '逆位'}
                 </span>
               </div>
             ))}
           </div>
         )
+      )}
+
+      {!insight.crisis && cards.length === 3 && (
+        <SpreadRelationMap cards={cards} />
       )}
 
       <div className="insight-sections">

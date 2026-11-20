@@ -1118,6 +1118,7 @@ function keywordsOf(card: DrawnCard): string[] {
 }
 
 function orientationLabel(card: DrawnCard): string {
+  if (card.card.private) return '（你的镜牌）'
   return card.orientation === 'upright' ? '正位' : '逆位'
 }
 
@@ -1149,12 +1150,14 @@ const DEMO_SUITS = [
 ]
 
 function demoSpreadLine(cards: DrawnCard[]): string {
-  const majorCount = cards.filter((card) => card.card.id < 22).length
-  const reversedCount = cards.filter(
+  const regularCards = cards.filter((card) => !card.card.private)
+  const hasPrivate = cards.length !== regularCards.length
+  const majorCount = regularCards.filter((card) => card.card.id < 22).length
+  const reversedCount = regularCards.filter(
     (card) => card.orientation === 'reversed',
   ).length
   const suitCounts = [0, 0, 0, 0]
-  cards
+  regularCards
     .filter((card) => card.card.id >= 22)
     .forEach((card) => {
       const suitIndex = Math.floor((card.card.id - 22) / 14)
@@ -1165,7 +1168,9 @@ function demoSpreadLine(cards: DrawnCard[]): string {
     majorCount >= 2
       ? '两张以上大阿卡纳，这次更接近阶段性的课题'
       : majorCount === 0
-        ? '三张都是小阿卡纳，落点更贴近日常'
+        ? hasPrivate
+          ? '两张常规牌都是小阿卡纳，落点更贴近日常'
+          : '三张都是小阿卡纳，落点更贴近日常'
         : '一张大阿卡纳落在具体日常里',
   )
   if (reversedCount >= 2) {
@@ -1176,6 +1181,9 @@ function demoSpreadLine(cards: DrawnCard[]): string {
     notes.push(
       `${suitCounts[concentrated]} 张${DEMO_SUITS[concentrated].name}，${DEMO_SUITS[concentrated].domain}是这次的主线`,
     )
+  }
+  if (hasPrivate) {
+    notes.push('其中一张是你自己带来的第79张图像，不按塔罗牌义计算')
   }
   return `牌阵结构上，${notes.join('；')}。`
 }
@@ -1220,8 +1228,14 @@ export function demoOpening(
     ].join('\n\n')
   }
 
+  const privateCard = cards.find((card) => card.card.private)
+  const regularCards = cards.filter((card) => !card.card.private)
+  const readCards = regularCards.length >= 2 ? regularCards : cards
   const [mainCard, counterCard] =
-    seed % 2 === 0 ? [cards[0], cards[1]] : [cards[0], cards[2]]
+    seed % 2 === 0 ? [readCards[0], readCards[1]] : [readCards[0], readCards[2] ?? readCards[1]]
+  const privateLine = privateCard
+    ? `那张《${privateCard.card.name}》是你自己带来的图像，不按塔罗牌义读；它更像在问：${asPrompt(privateCard.card.upright.meaning)}`
+    : ''
   const mainTemplates = [
     (position: string, card: string, orientation: string, meaning: string) =>
       `我更倾向从「${position}」的《${card}》${orientation}读起：这可能是说，${meaning}。`,
@@ -1252,7 +1266,7 @@ export function demoOpening(
   )}${choose(COUNTER_VOICES, seed, 8)}`
 
   return [
-    `${intro}${lens}`,
+    `${intro}${lens}${privateLine ? ` ${privateLine}` : ''}`,
     `${demoSpreadLine(cards)}${mainRead}`,
     `${counterRead}${caution ? ` ${caution}` : ''}`,
     `不必现在选哪一边；${asPrompt(prompt)}`,

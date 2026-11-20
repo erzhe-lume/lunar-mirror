@@ -2,14 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { buildChoicePile, toSpread, type PoolCard } from '../lib/draw'
 import { playChime, playReveal, playShuffle } from '../lib/sound'
-import type { DrawnCard } from '../types'
+import type { DrawnCard, PrivateCard } from '../types'
 import { POSITION_ORDER, POSITIONS } from '../types'
+import { shouldIncludePrivate } from '../lib/private-card'
 import TarotCard from '../components/TarotCard'
 
 interface Props {
   question: string
   querent?: string
   soundEnabled?: boolean
+  privateCard?: PrivateCard | null
+  onPrivateShown?: () => void
   onBack: () => void
   onComplete: (cards: DrawnCard[]) => void
 }
@@ -36,16 +39,29 @@ export default function DrawView({
   question,
   querent,
   soundEnabled = false,
+  privateCard = null,
+  onPrivateShown,
   onBack,
   onComplete,
 }: Props) {
   const [fanSize, setFanSize] = useState(detectFanSize)
   const previousFanSize = useRef(fanSize)
+  const privateNotified = useRef(false)
+  const privateCardRef = useRef(privateCard)
+
+  useEffect(() => {
+    privateCardRef.current = privateCard
+  }, [privateCard])
   const center = (fanSize - 1) / 2
   const spreadAngle =
     fanSize >= 15 ? 62 : fanSize >= 13 ? 56 : fanSize >= 11 ? 50 : 46
   const angleStep = spreadAngle / (fanSize - 1)
-  const [pile, setPile] = useState<PoolCard[]>(() => buildChoicePile(fanSize))
+  const [pile, setPile] = useState<PoolCard[]>(() =>
+    buildChoicePile(
+      fanSize,
+      privateCard && shouldIncludePrivate(privateCard) ? privateCard : null,
+    ),
+  )
   const [picks, setPicks] = useState<number[]>([])
   const [revealedCount, setRevealedCount] = useState(0)
   const [shuffling, setShuffling] = useState(false)
@@ -77,8 +93,22 @@ export default function DrawView({
     setShuffling(false)
     setPicks([])
     setRevealedCount(0)
-    setPile(buildChoicePile(fanSize))
+    setPile(
+      buildChoicePile(
+        fanSize,
+        privateCardRef.current && shouldIncludePrivate(privateCardRef.current)
+          ? privateCardRef.current
+          : null,
+      ),
+    )
   }, [fanSize])
+
+  useEffect(() => {
+    if (privateNotified.current) return
+    if (!pile.some((item) => item.private)) return
+    privateNotified.current = true
+    onPrivateShown?.()
+  }, [pile, onPrivateShown])
 
   useEffect(() => {
     return () => {
@@ -139,7 +169,12 @@ export default function DrawView({
     setPicks([])
     setRevealedCount(0)
     shuffleTimer.current = window.setTimeout(() => {
-      setPile(buildChoicePile(fanSize))
+      setPile(
+        buildChoicePile(
+          fanSize,
+          privateCard && shouldIncludePrivate(privateCard) ? privateCard : null,
+        ),
+      )
       shuffleRef.current = false
       setShuffling(false)
     }, 620)
@@ -275,8 +310,14 @@ export default function DrawView({
                     />
                   </div>
                   {index < revealedCount && (
-                    <span className={`slot-orientation ${picked.orientation}`}>
-                      {picked.orientation === 'upright' ? '↑ 正位' : '↓ 逆位'}
+                    <span
+                      className={`slot-orientation ${picked.card.private ? 'private' : picked.orientation}`}
+                    >
+                      {picked.card.private
+                        ? '第79张'
+                        : picked.orientation === 'upright'
+                          ? '↑ 正位'
+                          : '↓ 逆位'}
                     </span>
                   )}
                 </>
@@ -302,6 +343,9 @@ export default function DrawView({
         <span className="fan-hint" aria-hidden="true">
           命运之扇 · 78 张 · {FAN_LABELS[fanSize] ?? '九'}选三
         </span>
+        {pile.some((item) => item.private) && (
+          <span className="fan-private-hint">你的第79张也在这一扇里</span>
+        )}
         <div
           className="fan"
           role="group"
@@ -338,7 +382,7 @@ export default function DrawView({
               >
                 <span className="fan-card-float">
                   <span className="fan-card-tilt">
-                    <TarotCard size="sm" />
+                    <TarotCard size="sm" private={item.private} />
                   </span>
                 </span>
               </button>
