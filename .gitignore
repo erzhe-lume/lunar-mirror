@@ -28,3 +28,6 @@ stress-results/
 
 # Local publish tooling (contains deployment ids)
 *.qoder.site
+
+# Local promo capture scratch
+.video/
